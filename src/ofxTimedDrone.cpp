@@ -535,11 +535,30 @@ void ofxTimedDrone::drawDroneVids(){
 //--------------------------------------------------------------
 void ofxTimedDrone::testGo(){
     //TODO set gotime == now and then go
+    goTime = ofGetSystemTime();
+    go();
 }
 
 //--------------------------------------------------------------
+void ofxTimedDrone::testGoNow(){
+    //find the first event time
+    goTime = ofGetSystemTime() - droneEventList[0]->fireTime;
+    go();   
+}
+//--------------------------------------------------------------
 void ofxTimedDrone::keyPressed(int key){
-    
+    switch (key) {
+        case 'g':
+            testGo();
+            break;
+        
+        case 'n':
+            testGoNow();
+            break;
+            
+        default:
+            break;
+    }
 }
 
 //--------------------------------------------------------------

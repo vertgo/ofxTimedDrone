@@ -75,6 +75,7 @@ public:
     void drawDroneVids();           //draw the videos
     void updateDroneVids();         //updates the vids
     void testGo();                  //sets the gotime to the current time and tests a run before the server tells the drone to
+    void testGoNow();               //sets the gotime to some time in the past where the first event is now
     
     vector< FireEvent* > droneEventList;    //list of fire events ordered in sequence
     
@@ -98,4 +99,6 @@ public:
     
     bool weConnected;
     PlayerType playerType;
+    
+    
 };
