@@ -13,6 +13,9 @@
 #include "ofxJSONElement.h"
 #include "ofMain.h"
 #include "ofxSimpleSerial.h"
+#include "ofxAVFVideoPlayer.h"
+#include "ofxThreadedVideoPlayer.h"
+
 class FireEvent{
 public:
     FireEvent(string inType );
@@ -23,9 +26,9 @@ public:
     //bool fired; //should be ignored in favor of sorting by fire time,
                 //but since they're so few this would be coded faster
     ofxSimpleSerial* serial;
-    ofVideoPlayer* player;//change this to threaded if you swap architectures
-    
-    
+    ofVideoPlayer* player;
+    ofxAVFVideoPlayer* avPlayer;
+    ofxThreadedVideoPlayer* threadedPlayer;
     
     
     

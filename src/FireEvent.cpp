@@ -12,7 +12,9 @@ FireEvent::FireEvent( string inType ){
     //initialize the event from the node
     //fireTime = inNode["fireTime"].asFloat() *1000;
     type = inType;
-    
+    player = NULL;
+    avPlayer = NULL;
+    threadedPlayer = NULL;
     /*
     if (type == "video"){
         stopTime = inNode["stopTime"].asFloat() *1000;

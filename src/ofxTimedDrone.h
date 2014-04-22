@@ -5,9 +5,19 @@
 #include "ofxNetwork.h"
 #include "ofxJSONElement.h"
 #include "FireEvent.h"
+#include "ofxAVFVideoPlayer.h"
+#include "ofxThreadedVideoPlayer.h"
+#include "SyncedOFVideoPlayer.h"
+
 
 
 class ofxTimedDrone : public ofBaseApp{
+    
+    enum PlayerType{
+        QTKIT,
+        AVF,
+        THREADED_AVF
+    };
     
 public:
     
@@ -41,7 +51,8 @@ public:
     bool timeWent;                  //set to true when the go time has passed and we are looking for events to fire.
     //Events will fire in the first frame after the fire time has elapsed since go time
     void loadDroneConfig();         //loads the config file
-    void parseServerInfo( ofxJSONElement inNode );  //parses the server info
+    void parseServerInfo( ofxJSONElement inNode );  //parses the server settings, ip address, port, timeout
+    void parsePlayerInfo( ofxJSONElement inNode );  //parses the player info, qtkit, avf, or
     void parseDroneVid( ofxJSONElement inNode ); //parses a single video config node, making all the necessary firevents to start and stop a video
     void parseDroneDuino( ofxJSONElement inNode ); //parses a single arduino config node
     void parseDronServer( ofxJSONElement inNode ); //parses the server information from the config //currently not implemented
@@ -66,7 +77,16 @@ public:
     void testGo();                  //sets the gotime to the current time and tests a run before the server tells the drone to
     
     vector< FireEvent* > droneEventList;    //list of fire events ordered in sequence
-    vector< ofVideoPlayer*> droneVideoPlayers;  //vector of all the vids
+    
+    //we need three different vectors since we have three different types of video players
+    
+    vector< SyncedOFVideoPlayer*> qtVideoPlayers;  //vector of all the vids for qtkit
+    vector< ofxAVFVideoPlayer*> avfVideoPlayers;  //vector of all the vids for avf
+    vector< ofxThreadedVideoPlayer*> threadedVideoPlayers;  //vector of all the vids for threaded
+    
+    vector<uint> vidStartTimes; //kind of inelegant, corresponds to the videos, sets their start time
+    
+    
     vector< ofxSimpleSerial*> droneArduinos;    //list of arduinos, not actually necessary
     map<string, vector<ofxSimpleSerial*>* > droneCommandToListOfSerials; //this is a dictionary where a configuration maps to a list of arduinos who need that configuration set
     //LOOK AT ALL THOSE POINTERS #ballin'
@@ -77,4 +97,5 @@ public:
     string msgTx, msgRx;
     
     bool weConnected;
+    PlayerType playerType;
 };
