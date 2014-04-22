@@ -5,7 +5,7 @@
 //--------------------------------------------------------------
 void ofxTimedDrone::setup(){
     
-    playerType = QTKIT;//default to qtkit
+    playerType = AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     //some default settings in case it doesn't work
     serverIP = "10.0.1.7";
     port = 1337;
@@ -517,9 +517,10 @@ void ofxTimedDrone::drawDroneVids(){
                 
                 ofxAVFVideoPlayer* curPlayer = avfVideoPlayers[ i ];
                 
-                if ( curPlayer->isPlaying() ){
+                if ( curPlayer->getPlaying() ){
                     //cout << "drawing avf vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
+                    
                     curPlayer->draw( 0,0, vidWidth, vidHeight  );
                     
                 }
