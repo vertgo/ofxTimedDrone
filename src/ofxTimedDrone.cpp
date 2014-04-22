@@ -20,7 +20,7 @@ void ofxTimedDrone::setup(){
     
     goTime = 0;
     timeWent = false;
-    
+    cout <<"setup::1\n";
     //{"goTime":1397764230152,"city":"New York","temperature":46.74,"condition":"partly-cloudy-day"}
     
     //are we connected to the server - if this fails we
@@ -29,11 +29,11 @@ void ofxTimedDrone::setup(){
     lastConnectTime = ofGetElapsedTimeMillis();
 	//optionally set the delimiter to something else.  The delimter in the client and the server have to be the same
 	tcpClient.setMessageDelimiter("\n");
-    
+    cout <<"setup::2\n";
 	tcpClient.setVerbose(false);
     
     curEventIndex = 0;
-    
+    cout <<"setup::3\n";
     
 }
 
@@ -133,15 +133,6 @@ void ofxTimedDrone::parseDroneDuino(ofxJSONElement inNode){
 }
 //--------------------------------------------------------------
 void ofxTimedDrone::parsePlayerInfo(ofxJSONElement inNode){
-    /*switch ( playerType ){
-        case QTKIT:
-            
-            break;
-        case AVF:
-            break;
-        case THREADED_AVF:
-            break;
-    }*/
     ofxJSONElement ptypeNode = inNode["type"];
     if ( ptypeNode != Json::nullValue){
         string ptypeString = ptypeNode.asString();
@@ -404,11 +395,36 @@ void ofxTimedDrone::parseJsonFromServer(ofxJSONElement inNode){
 }
 //--------------------------------------------------------------
 void ofxTimedDrone::go(){
+    resetVideos();
     curEventIndex = 0;
     timeWent = true;
 }
 
+//--------------------------------------------------------------
+void ofxTimedDrone::resetVideos(){
+    
+    switch (playerType){
+        case QTKIT:
+            for (int i = 0; i < qtVideoPlayers.size(); i++){
+                qtVideoPlayers[i]->stop();
+                qtVideoPlayers[i]->setPosition(0);
+            }
+            break;
+        case AVF:
+            for (int i = 0; i < avfVideoPlayers.size(); i++){
+                avfVideoPlayers[i]->stop();
+                avfVideoPlayers[i]->setPosition(0);
+            }
+            break;
+        case THREADED_AVF:
+            for (int i = 0; i < threadedVideoPlayers.size(); i++){
+                threadedVideoPlayers[i]->stop();
+                threadedVideoPlayers[i]->setPosition(0);
+            }
+            break;
+    }
 
+}
 
 //--------------------------------------------------------------
 void ofxTimedDrone::draw(){
@@ -445,7 +461,7 @@ void ofxTimedDrone::updateDroneVids(){
                 
                 ofxAVFVideoPlayer* curPlayer = avfVideoPlayers[ i ];
                 
-                if ( curPlayer->isPlaying() ){
+                if ( curPlayer->getPlaying() ){
                     curPlayer->syncToTime( ((float)playHead )/1000.f);
                     curPlayer->update();
                 }
@@ -543,7 +559,7 @@ void ofxTimedDrone::testGo(){
 void ofxTimedDrone::testGoNow(){
     //find the first event time
     goTime = ofGetSystemTime() - droneEventList[0]->fireTime;
-    go();   
+    go();
 }
 //--------------------------------------------------------------
 void ofxTimedDrone::keyPressed(int key){

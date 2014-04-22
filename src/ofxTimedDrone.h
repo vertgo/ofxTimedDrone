@@ -72,6 +72,9 @@ public:
     
     void parseJsonFromServer( ofxJSONElement inNode );  //when the new json comes in, besides just go time,
     //it has to send the correct commands to the arduinos
+    
+    void resetVideos(); //stops the videos and resets them to 0
+    
     void drawDroneVids();           //draw the videos
     void updateDroneVids();         //updates the vids
     void testGo();                  //sets the gotime to the current time and tests a run before the server tells the drone to
