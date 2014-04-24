@@ -338,19 +338,19 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
     else if ( inEvent->type == "vidStop" ){
         switch(playerType){
             case QTKIT:
-                inEvent->player->stop();
+                //inEvent->player->stop();
                 inEvent->player->setPosition(0);
                 inEvent->player->setPaused(true);
                 break;
                 
             case AVF:
-                inEvent->avPlayer->stop();
+                //inEvent->avPlayer->stop();
                 inEvent->avPlayer->setPosition(0);
                 inEvent->avPlayer->setPaused(true);
                 break;
                 
             case THREADED_AVF:
-                inEvent->threadedPlayer->stop();
+                //inEvent->threadedPlayer->stop();
                 inEvent->threadedPlayer->setPosition(0);
                 inEvent->threadedPlayer->setPaused(true);
                 
@@ -626,11 +626,7 @@ void ofxTimedDrone::keyPressed(int key){
 
 //--------------------------------------------------------------
 void ofxTimedDrone::keyReleased(int key){
-    switch (key) {
-        case 'g':
-            //todo test go
-            testGo();
-    }
+    
 }
 
 //--------------------------------------------------------------
