@@ -9,8 +9,8 @@ void ofxTimedDrone::setup(){
     //some default settings in case it doesn't work
     serverIP = "10.0.1.7";
     port = 1337;
-    reconnectTime = 400;
-    
+    reconnectTime = 4000;
+
     loadDroneConfig();
     ofSetVerticalSync(true);
     ofSetFrameRate(30);
@@ -34,7 +34,8 @@ void ofxTimedDrone::setup(){
     
     curEventIndex = 0;
     cout <<"setup::3\n";
-    
+    numThreadedVidsReady = 0;
+    ofSetFullscreen(true);    
 }
 
 //used for sorting events
@@ -184,24 +185,38 @@ void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
             vidPlayer->loadMovie(vidName);
             vidFireEvent->player = vidPlayer;
             qtVideoPlayers.push_back(vidPlayer);
+
+            //hack to make it sync better
+            vidPlayer->play();
+            vidPlayer->setPosition(0);
+            vidPlayer->setPaused(true);
             break;
             
         case AVF:
             avVidPlayer = new ofxAVFVideoPlayer();
             avVidPlayer->setLoopState(OF_LOOP_NONE);
             avVidPlayer->loadMovie(vidName);
-            avVidPlayer->stop();
+
             vidFireEvent->avPlayer = avVidPlayer;
             avfVideoPlayers.push_back(avVidPlayer);
+            avVidPlayer->play();
+            avVidPlayer->setPosition(0);
+            avVidPlayer->setPaused(true);
             break;
             
         case THREADED_AVF:
             threadedVidPlayer = new ofxThreadedVideoPlayer();
+            ofAddListener(threadedVidPlayer->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback);
             threadedVidPlayer->loadVideo(vidName);
             threadedVidPlayer->setLoopMode(OF_LOOP_NONE);
-            threadedVidPlayer->stop();
             vidFireEvent->threadedPlayer = threadedVidPlayer;
             threadedVideoPlayers.push_back(threadedVidPlayer);
+            /*threadedVidPlayer->play();
+            threadedVidPlayer->setPosition(0);
+            threadedVidPlayer->setPaused(true);
+            */
+
+            
             break;
     }
     
@@ -241,7 +256,7 @@ void ofxTimedDrone::droneCheckForGo(){
     
     if( !timeWent && goTime != 0  ){
         
-        cout << "!timeWent::now:\n" <<now << "\n"<< goTime <<endl;
+        //cout << "!timeWent::now:\n" <<now << "\n"<< goTime <<endl;
         if ( now >= goTime ){
             go(); //do something I suppose
             cout << "NOW!!\n";
@@ -251,8 +266,18 @@ void ofxTimedDrone::droneCheckForGo(){
         }
     }
     
-    //not in an else statement, the previous if statement might have triggered time went
-    if ( timeWent ) {
+    
+    //cout <<"timeWent:" <<timeWent <<endl;
+    
+    
+    
+    if ( playerType == THREADED_AVF && numThreadedVidsReady < threadedVideoPlayers.size()){
+        for( int i = 0; i < threadedVideoPlayers.size(); i++ ){
+            threadedVideoPlayers[i]->update();
+        }
+    }
+    else if ( timeWent ) {
+        
         checkDroneEvents();
         updateDroneVids();
         
@@ -314,12 +339,21 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
         switch(playerType){
             case QTKIT:
                 inEvent->player->stop();
+                inEvent->player->setPosition(0);
+                inEvent->player->setPaused(true);
                 break;
+                
             case AVF:
                 inEvent->avPlayer->stop();
+                inEvent->avPlayer->setPosition(0);
+                inEvent->avPlayer->setPaused(true);
                 break;
+                
             case THREADED_AVF:
                 inEvent->threadedPlayer->stop();
+                inEvent->threadedPlayer->setPosition(0);
+                inEvent->threadedPlayer->setPaused(true);
+                
                 break;
                 
         }
@@ -393,6 +427,17 @@ void ofxTimedDrone::parseJsonFromServer(ofxJSONElement inNode){
     cout << endl;
     
 }
+
+//--------------------------------------------------------------
+void ofxTimedDrone::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
+    cout << "videoIsReadyCallback\n";
+    numThreadedVidsReady++; //hope there's not a race condition here
+    ofRemoveListener(status.player->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback);
+    status.player->play();
+    //status.player->setPosition(0);
+    status.player->setPaused(true);
+    
+}
 //--------------------------------------------------------------
 void ofxTimedDrone::go(){
     resetVideos();
@@ -406,20 +451,22 @@ void ofxTimedDrone::resetVideos(){
     switch (playerType){
         case QTKIT:
             for (int i = 0; i < qtVideoPlayers.size(); i++){
-                qtVideoPlayers[i]->stop();
                 qtVideoPlayers[i]->setPosition(0);
+                qtVideoPlayers[i]->setPaused(true);
+
             }
             break;
         case AVF:
             for (int i = 0; i < avfVideoPlayers.size(); i++){
-                avfVideoPlayers[i]->stop();
+
                 avfVideoPlayers[i]->setPosition(0);
+                avfVideoPlayers[i]->setPaused(true);
             }
             break;
         case THREADED_AVF:
             for (int i = 0; i < threadedVideoPlayers.size(); i++){
-                threadedVideoPlayers[i]->stop();
                 threadedVideoPlayers[i]->setPosition(0);
+                threadedVideoPlayers[i]->setPaused( true);
             }
             break;
     }
@@ -438,14 +485,15 @@ void ofxTimedDrone::draw(){
 void ofxTimedDrone::updateDroneVids(){
     
     
-    unsigned long long now = ofGetSystemTime();
+    //hack, remove 300 ms, because it takes about 1/3rd of a second to start the play
+    long long now = ofGetSystemTime() - 200;
     
     
     switch ( playerType ){
      case QTKIT:
             for( int i = 0; i< qtVideoPlayers.size(); i++ ){
                 
-                unsigned long long playHead = now - goTime - vidStartTimes[i];
+                long long playHead = now - goTime - vidStartTimes[i];
                 
                 SyncedOFVideoPlayer* curPlayer = qtVideoPlayers[ i ];
                 
@@ -457,7 +505,7 @@ void ofxTimedDrone::updateDroneVids(){
             break;
      case AVF:
             for( int i = 0; i< avfVideoPlayers.size(); i++ ){
-                unsigned long long playHead = now - goTime -vidStartTimes[i];
+                long long playHead = now - goTime -vidStartTimes[i];
                 
                 ofxAVFVideoPlayer* curPlayer = avfVideoPlayers[ i ];
                 
@@ -470,10 +518,8 @@ void ofxTimedDrone::updateDroneVids(){
      case THREADED_AVF:
             
             for( int i = 0; i< threadedVideoPlayers.size(); i++ ){
-                unsigned long long playHead = now - goTime - vidStartTimes[i];
-                
+                long long playHead = now - goTime - vidStartTimes[i];
                 ofxThreadedVideoPlayer* curPlayer = threadedVideoPlayers[ i ];
-                
                 if ( curPlayer->isPlaying() ){
                     curPlayer->syncToPlayhead( ((float)playHead )/1000.f);
                     curPlayer->update();

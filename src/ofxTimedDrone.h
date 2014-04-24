@@ -79,6 +79,8 @@ public:
     void updateDroneVids();         //updates the vids
     void testGo();                  //sets the gotime to the current time and tests a run before the server tells the drone to
     void testGoNow();               //sets the gotime to some time in the past where the first event is now
+    void videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status);
+    int numThreadedVidsReady;
     
     vector< FireEvent* > droneEventList;    //list of fire events ordered in sequence
     
