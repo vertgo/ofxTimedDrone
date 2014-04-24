@@ -10,10 +10,18 @@ void ofxTimedDrone::setup(){
     serverIP = "10.0.1.7";
     port = 1337;
     reconnectTime = 4000;
-
+    
+    //volume stuff
+    volumeEasing = .1f;
+    targetVolume = ambientVolume = 0.25f;
+    turntUp = 0.75f;
+    
+    
     loadDroneConfig();
     ofSetVerticalSync(true);
     ofSetFrameRate(30);
+    
+
     
     msgTx	= "";
 	msgRx	= "";
@@ -52,7 +60,9 @@ void ofxTimedDrone::loadDroneConfig(){
     //cout << "loadDroneCOnfig:: config:" <<droneResult.toStyledString() <<endl;
     ofxJSONElement videoNodes = droneResult["videos"];
     ofxJSONElement arduinoNodes = droneResult["arduinos"];
-    
+    if ( droneResult["sound"].type() != Json::nullValue ){
+        parseSoundInfo( droneResult["sound"] );
+    }
     int numVideos = videoNodes.size();
     
     for( int i = 0; i < numVideos; i++ ){
@@ -163,6 +173,39 @@ void ofxTimedDrone::addCommand(string command, ofxSimpleSerial *serial){
     serialList->push_back( serial );
     cout << "adding arduino command:" << command <<endl;
 }
+//--------------------------------------------------------------
+void ofxTimedDrone::parseSoundInfo(ofxJSONElement inNode){
+    string soundName = inNode["file"].asString();
+    
+    if( inNode["easing"].type() != Json::nullValue ){
+        volumeEasing = ofClamp( inNode["easing"].asFloat(), 0.001f, .9f);
+    }
+    FireEvent* soundFireEvent = new FireEvent( "soundFire");
+    soundFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
+    cout <<"Making a sound:" << soundName << ", that starts at:" <<((float)soundFireEvent->fireTime)/1000.f;
+    droneEventList.push_back(soundFireEvent);
+    
+    targetVolume = ambientVolume = inNode["ambientVolume"].asFloat();
+    turntUp = inNode["turntup"].asFloat();
+    cout << "ambientVolume:"<<ambientVolume<<endl;
+    cout << "turntup:"<<turntUp<<endl;
+    //if ( inNode["stopTime"].type() != Json::nullValue ){
+    FireEvent* stopEvent = new FireEvent( "soundStop" );
+    stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
+    
+    droneEventList.push_back(stopEvent);
+    cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
+    //}
+    
+    soundPlayer.loadSound(soundName);
+    soundPlayer.setVolume(ambientVolume);
+    soundPlayer.setLoop(true);
+    soundPlayer.play();
+    
+    
+    cout << endl;
+    
+}
 
 //--------------------------------------------------------------
 void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
@@ -176,7 +219,10 @@ void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
     SyncedOFVideoPlayer* vidPlayer;
     ofxAVFVideoPlayer* avVidPlayer;
     ofxThreadedVideoPlayer* threadedVidPlayer;
-    
+    float volume = 1.f;
+    if ( inNode["volume"].type() != Json::nullValue ){
+        volume = inNode["volume"].asFloat();
+    }
     switch ( playerType ){
         case QTKIT:
             vidPlayer = new SyncedOFVideoPlayer();
@@ -190,6 +236,7 @@ void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
             vidPlayer->play();
             vidPlayer->setPosition(0);
             vidPlayer->setPaused(true);
+            vidPlayer->setVolume(volume);
             break;
             
         case AVF:
@@ -202,6 +249,7 @@ void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
             avVidPlayer->play();
             avVidPlayer->setPosition(0);
             avVidPlayer->setPaused(true);
+            avVidPlayer->setVolume(volume);
             break;
             
         case THREADED_AVF:
@@ -209,8 +257,10 @@ void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
             ofAddListener(threadedVidPlayer->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback);
             threadedVidPlayer->loadVideo(vidName);
             threadedVidPlayer->setLoopMode(OF_LOOP_NONE);
+            threadedVidPlayer->setVolume(volume);
             vidFireEvent->threadedPlayer = threadedVidPlayer;
             threadedVideoPlayers.push_back(threadedVidPlayer);
+            
             /*threadedVidPlayer->play();
             threadedVidPlayer->setPosition(0);
             threadedVidPlayer->setPaused(true);
@@ -358,6 +408,17 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 
         }
     }
+    else if ( inEvent->type == "soundFire" ){
+        cout<< "soundFire, setting volume to:" << turntUp<<endl;
+        
+        targetVolume = turntUp;
+    }
+    
+    else if ( inEvent->type == "soundStop" ){
+        cout<< "soundStop, setting volume to:" << ambientVolume<<endl;
+        //soundPlayer.setVolume(ambientVolume);
+        targetVolume = ambientVolume;
+    }
 }
 
 
@@ -398,6 +459,25 @@ void ofxTimedDrone::update(){
     }
     
     droneCheckForGo();
+    easeVolume();
+    
+}
+//--------------------------------------------------------------
+void ofxTimedDrone::easeVolume(){
+    
+    float inverseEasing = 1.f - volumeEasing;
+    if ( soundPlayer.getVolume() != targetVolume ){
+    
+        float newVolume = soundPlayer.getVolume()* inverseEasing + volumeEasing* targetVolume;
+        if ( abs(newVolume-targetVolume) < .01) {
+            newVolume = targetVolume;
+            cout<< "hitting target volume\n";
+        }
+        else{
+            cout<< "easing volume\n";
+        }
+        soundPlayer.setVolume( newVolume );
+    }
     
 }
 

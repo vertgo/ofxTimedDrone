@@ -56,6 +56,7 @@ public:
     void parseDroneVid( ofxJSONElement inNode ); //parses a single video config node, making all the necessary firevents to start and stop a video
     void parseDroneDuino( ofxJSONElement inNode ); //parses a single arduino config node
     void parseDronServer( ofxJSONElement inNode ); //parses the server information from the config //currently not implemented
+    void parseSoundInfo( ofxJSONElement inNode );
     void addCommand( string command, ofxSimpleSerial* serial);  //when the arduino node is parsed, it looks for commands
     //sent from the server to send config info to the arduino.
     //It passes it through unmodified.
@@ -89,8 +90,14 @@ public:
     vector< SyncedOFVideoPlayer*> qtVideoPlayers;  //vector of all the vids for qtkit
     vector< ofxAVFVideoPlayer*> avfVideoPlayers;  //vector of all the vids for avf
     vector< ofxThreadedVideoPlayer*> threadedVideoPlayers;  //vector of all the vids for threaded
-    
     vector<uint> vidStartTimes; //kind of inelegant, corresponds to the videos, sets their start time
+    
+    ofSoundPlayer soundPlayer;
+    float ambientVolume;
+    float turntUp;
+    float targetVolume;
+    void easeVolume();
+    float volumeEasing;
     
     
     vector< ofxSimpleSerial*> droneArduinos;    //list of arduinos, not actually necessary
