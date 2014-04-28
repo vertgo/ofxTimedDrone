@@ -8,6 +8,7 @@
 #include "ofxAVFVideoPlayer.h"
 #include "ofxThreadedVideoPlayer.h"
 #include "SyncedOFVideoPlayer.h"
+#include "SyncSequence.h"
 
 
 
@@ -36,6 +37,8 @@ public:
     void gotMessage(ofMessage msg);
     void go();
     
+    SyncSequence* curSequence;
+    
     //server stuff
     string serverIP;
     int port;
@@ -50,6 +53,10 @@ public:
     
     bool timeWent;                  //set to true when the go time has passed and we are looking for events to fire.
     //Events will fire in the first frame after the fire time has elapsed since go time
+    
+    
+    
+    //All the config load
     void loadDroneConfig();         //loads the config file
     void parseServerInfo( ofxJSONElement inNode );  //parses the server settings, ip address, port, timeout
     void parsePlayerInfo( ofxJSONElement inNode );  //parses the player info, qtkit, avf, or
@@ -62,6 +69,7 @@ public:
     //It passes it through unmodified.
     //TODO: There might need to be a way to pass a function to parse that info rather than just pass it through
     
+    //Update commands
     void droneCheckForGo();         //looks for events every frame
     void checkDroneEvents();        //once goTime has passed, we check each frame to see if its time to set off the next event.
     //At most, an event will be <1 frame late, approx 1/30th of a sec
@@ -83,14 +91,6 @@ public:
     void videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status);
     int numThreadedVidsReady;
     
-    vector< FireEvent* > droneEventList;    //list of fire events ordered in sequence
-    
-    //we need three different vectors since we have three different types of video players
-    
-    vector< SyncedOFVideoPlayer*> qtVideoPlayers;  //vector of all the vids for qtkit
-    vector< ofxAVFVideoPlayer*> avfVideoPlayers;  //vector of all the vids for avf
-    vector< ofxThreadedVideoPlayer*> threadedVideoPlayers;  //vector of all the vids for threaded
-    vector<uint> vidStartTimes; //kind of inelegant, corresponds to the videos, sets their start time
     
     ofSoundPlayer soundPlayer;
     float ambientVolume;
@@ -100,7 +100,10 @@ public:
     float volumeEasing;
     
     
+    //TODO change this to arduinoNameToSerial map
     vector< ofxSimpleSerial*> droneArduinos;    //list of arduinos, not actually necessary
+    
+    
     map<string, vector<ofxSimpleSerial*>* > droneCommandToListOfSerials; //this is a dictionary where a configuration maps to a list of arduinos who need that configuration set
     //LOOK AT ALL THOSE POINTERS #ballin'
     ofxJSONElement droneResult;

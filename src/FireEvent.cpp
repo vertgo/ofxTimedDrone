@@ -15,13 +15,5 @@ FireEvent::FireEvent( string inType ){
     player = NULL;
     avPlayer = NULL;
     threadedPlayer = NULL;
-    /*
-    if (type == "video"){
-        stopTime = inNode["stopTime"].asFloat() *1000;
-    }
-    else if (type == "arduino"){
-        stopTime = inNode["wipeTime"].asFloat() *1000;
-    }
-    */
     
 }
