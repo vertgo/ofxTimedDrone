@@ -11,7 +11,7 @@ int GlobalThreadedVids::numLoadedThreadedVids = 0;
 vector< ofxThreadedVideoPlayer*> GlobalThreadedVids::players; //don't hate
 
 SyncSequence::SyncSequence( string inType){
-    numThreadedVidsReady = 0;
+    //numThreadedVidsReady = 0;
     type = inType;
 }
 
@@ -41,24 +41,41 @@ void SyncSequence::parseFromJson( ofxJSONElement inNode, PlayerType inPlayerType
     for( int i = 0; i < numVideos; i++ ){
         ofxJSONElement curVidNode = videoNodes[ i];
         parseVidNode(curVidNode);
-        cout << "parsing video";
+        cout << "parsing video\n";
         
     }
     
     int numArduinos = arduinoNodes.size();
     for( int i = 0; i < numArduinos; i++ ){
         parseDroneDuino( arduinoNodes[i] );
-        cout << "parsing arduino";
+        cout << "parsing arduino\n";
         
     }
     
+    parseSound( inNode[ "sound" ] );
     
     cout << "numVideos:" <<numVideos << ", numArduinos:"<< numArduinos <<endl;
     
     
     sortList();
 }
-
+//--------------------------------------------------------------
+void SyncSequence::parseSound(ofxJSONElement inNode){
+    if ( inNode[ "fireTime"].type() != Json::nullValue ){
+        FireEvent* soundFireEvent = new FireEvent( "soundFire");
+        soundFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
+        droneEventList.push_back(soundFireEvent);
+        cout << "parsing soundFire\n";
+    }
+    
+    if ( inNode[ "stopTime"].type() != Json::nullValue ){
+        
+        FireEvent* stopEvent = new FireEvent( "soundStop" );
+        stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
+        droneEventList.push_back(stopEvent);
+        cout << "parsing soundStop\n";
+    }
+}
 //--------------------------------------------------------------
 void SyncSequence::parseDroneDuino(ofxJSONElement inNode){
     //string arduinoName = inNode[ "arduino"].asString();
@@ -130,12 +147,13 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
             
         case THREADED_AVF:
             threadedVidPlayer = new ofxThreadedVideoPlayer();
-            //GlobalThreadedVids::players.push_back( threadedVidPlayer);
+            GlobalThreadedVids::players.push_back( threadedVidPlayer);
             
             ofAddListener(threadedVidPlayer->videoIsReadyEvent, this, &SyncSequence::videoIsReadyCallback);
             threadedVidPlayer->loadVideo(vidName);
             threadedVidPlayer->setLoopMode(OF_LOOP_NONE);
             threadedVidPlayer->setVolume(volume);
+            playerToVolume[ threadedVidPlayer] = volume;
             vidFireEvent->threadedPlayer = threadedVidPlayer;
             threadedVideoPlayers.push_back(threadedVidPlayer);
             
@@ -173,13 +191,12 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
 //--------------------------------------------------------------
 void SyncSequence::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
     cout << "videoIsReadyCallback\n";
-    numThreadedVidsReady++; //hope there's not a race condition here
     ofRemoveListener(status.player->videoIsReadyEvent, this, &SyncSequence::videoIsReadyCallback);
     //status.player->play();
     //status.player->setPosition(0);
     status.player->setPaused(true);
     //this gets called during thread lock, so we should be thread safe
-    numThreadedVidsReady++;
-    
+    GlobalThreadedVids::numLoadedThreadedVids++;
+    status.player->setVolume( playerToVolume[ status.player] );
     
 }

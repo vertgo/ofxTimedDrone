@@ -179,14 +179,6 @@ void ofxTimedDrone::parseSoundInfo(ofxJSONElement inNode){
         volumeEasing = ofClamp( inNode["easing"].asFloat(), 0.001f, .9f);
     }
     
-    
-    //TODO make sure the soundFire events are made from the sync sequences
-    //FireEvent* soundFireEvent = new FireEvent( "soundFire");
-    //soundFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
-    //cout <<"Making a sound:" << soundName << ", that starts at:" <<((float)soundFireEvent->fireTime)/1000.f;
-    //curSequence->droneEventList.push_back(soundFireEvent);
-    
-    
     if ( inNode["ambientVolume"].type() != Json::nullValue ){
         targetVolume = ambientVolume = inNode["ambientVolume"].asFloat();
         cout << "ambientVolume:"<<ambientVolume<<endl;
@@ -196,15 +188,6 @@ void ofxTimedDrone::parseSoundInfo(ofxJSONElement inNode){
         turntUp = inNode["turntup"].asFloat();
         cout << "turntup:"<<turntUp<<endl;
     }
-    
-    //TODO also read the stop events into the syncsequence
-    //if ( inNode["stopTime"].type() != Json::nullValue ){
-    //FireEvent* stopEvent = new FireEvent( "soundStop" );
-    //stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
-    
-    //curSequence->droneEventList.push_back(stopEvent);
-    //cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
-    //}
     
 
     soundPlayer.setVolume(ambientVolume);
@@ -239,6 +222,7 @@ void ofxTimedDrone::droneCheckForGo(){
     
     //TODO remove this and just make it run update until all threaded videos are ready
     //if ( playerType == THREADED_AVF && curSequence->numThreadedVidsReady < curSequence->threadedVideoPlayers.size()){
+    //cout << "droneCheckForGo:numLoaded:" <<  GlobalThreadedVids::numLoadedThreadedVids << " out of " <<GlobalThreadedVids::players.size()<< endl;
     if ( playerType == THREADED_AVF && GlobalThreadedVids::numLoadedThreadedVids < GlobalThreadedVids::players.size() ){
         for( int i = 0; i < GlobalThreadedVids::players.size(); i++ ){
             GlobalThreadedVids::players[i]->update();

@@ -49,12 +49,14 @@ public:
     
     void parseFromJson( ofxJSONElement inNode, PlayerType inType );
     void parseVidNode( ofxJSONElement inNode ); //parses a single video config node, making all the necessary firevents to start and stop a video
+    void parseSound( ofxJSONElement inNode );
     
     PlayerType playerType;
     void videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status);
     
-    int numThreadedVidsReady;
+    //int numThreadedVidsReady;
     void parseDroneDuino(ofxJSONElement inNode);
+    map< ofxThreadedVideoPlayer*, float> playerToVolume; //the players can't set the volume til they're loaded
     
     
 };
