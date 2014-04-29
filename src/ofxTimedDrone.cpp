@@ -37,7 +37,7 @@ void ofxTimedDrone::setup(){
 	weConnected = tcpClient.setup(serverIP, port);
     lastConnectTime = ofGetElapsedTimeMillis();
 	//optionally set the delimiter to something else.  The delimter in the client and the server have to be the same
-	tcpClient.setMessageDelimiter("\n");
+	//tcpClient.setMessageDelimiter("\n");
     cout <<"setup::2\n";
 	tcpClient.setVerbose(false);
     
@@ -131,7 +131,7 @@ void ofxTimedDrone::parseArduinoNames(ofxJSONElement inNode){
             cout << "parsing commands\n";
             int numCommands = commands.size();
             for( int i = 0; i < numCommands; i++ ){
-                addCommand(commands[i].asString(), serial);
+                addCommand(commands[i]["path"].asString(), commands[i]["out"].asString(), serial);
             }
         }
     }
@@ -155,17 +155,18 @@ void ofxTimedDrone::parsePlayerInfo(ofxJSONElement ptypeNode){
 }
 
 //--------------------------------------------------------------
-void ofxTimedDrone::addCommand(string command, ofxSimpleSerial *serial){
+void ofxTimedDrone::addCommand(string inPath, string inCommand, ofxSimpleSerial *serial){
     
-    cout << "addCommand:" << command <<endl;
-    vector<ofxSimpleSerial*>* serialList = droneCommandToListOfSerials[ command];
-    if ( serialList == NULL ){
-        serialList = new vector<ofxSimpleSerial*>();
-        droneCommandToListOfSerials[ command] = serialList;
-    }
+    cout << "addCommand:" << inCommand <<endl;
+    //vector<ofxSimpleSerial*>* serialList = droneCommandToListOfSerials[ command];
+    CommandPath* curCP = new CommandPath();
+    curCP->name = inCommand;
+    curCP->path = new Json::Path(inPath);
+    curCP->serial = serial;
     
-    serialList->push_back( serial );
-    cout << "adding arduino command:" << command <<endl;
+    jsonArduinoCommands.push_back( curCP );
+    
+    
 }
 //--------------------------------------------------------------
 void ofxTimedDrone::parseSoundInfo(ofxJSONElement inNode){
@@ -334,48 +335,54 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
 //--------------------------------------------------------------
 void ofxTimedDrone::update(){
     if ( weConnected && tcpClient.isConnected() ){
-        //if(tcpClient.send(msgTx)){
-        string str = tcpClient.receive();
-        if( str.length() > 0 ){
-            msgRx = str;
-            
-            cout << "our message: " << msgRx << endl;
-            
-            // Now parse the JSON
-            bool parsingSuccessful = result.parse(msgRx);
-            if (parsingSuccessful) {
+        if (ofGetElapsedTimeMillis() > 4000 ){ //hack to make it wait to parse the backend data
+            //if(tcpClient.send(msgTx)){
+            cout << "ofxTimedDrone::update1\n";
+            string str = tcpClient.receive();
+            if( str.length() > 0 ){
+                msgRx = str;
+                cout << "ofxTimedDrone::update2\n";
+                cout << "our message: " << msgRx << endl;
                 
-                // our debug info
-                //cout << result.getRawString() << endl;
-                
-                
-                
-                //if it's a goTime message, find the event and set go
-                if ( result["goTime"].type() != Json::nullValue ){
-                    cout << "update::parsing goTime\n";
-                    //{"goTime":1398718870436,"eventType":"sports"}[/TCP]
-                    unsigned long long newGoTime = (unsigned long long)result[ "goTime"].asInt64();//.asUInt();
-                    string eventType = result[ "eventType"].asString();
-                    //TODO stop videos in the last current sequence
-                    if ( optionNameToSequence[ eventType] != NULL){
-                        curSequence = optionNameToSequence[ eventType];
-                    }
-                    else{
-                        curSequence = defaultSequence;
-                    }
-                    goTime = newGoTime;
-                    timeWent = false;
-                }
-                
-                //if it's an update from the backend, parse it
-                else if ( result["backendData"].type() != Json::nullValue ){
-                    cout << "update::parsing the backend Data\n";
-                    parseJsonFromBackend(result["backendData"]);
+                // Now parse the JSON
+                bool parsingSuccessful = result.parse(msgRx);
+                if (parsingSuccessful) {
                     
-                }
-                
-                else{
-                    cout<< "update::unknownOutput\n";
+                    // our debug info
+                    //cout << result.getRawString() << endl;
+                    
+                    
+                    
+                    //if it's a goTime message, find the event and set go
+                    if ( result["goTime"].type() != Json::nullValue ){
+                        cout << "update::parsing goTime\n";
+                        //{"goTime":1398718870436,"eventType":"sports"}[/TCP]
+                        unsigned long long newGoTime = (unsigned long long)result[ "goTime"].asInt64();//.asUInt();
+                        string eventType = result[ "eventType"].asString();
+                        //TODO stop videos in the last current sequence
+                        if ( optionNameToSequence[ eventType] != NULL){
+                            resetCurSequence(); //for the current sequence before starting the next
+                            curSequence = optionNameToSequence[ eventType];
+                        }
+                        else{
+                            resetCurSequence();
+                            
+                            curSequence = defaultSequence;
+                        }
+                        goTime = newGoTime;
+                        timeWent = false;
+                    }
+                    
+                    //if it's an update from the backend, parse it
+                    else if ( result["backendData"].type() != Json::nullValue ){
+                        cout << "update::parsing the backend Data\n";
+                        parseJsonFromBackend(result["backendData"]);
+                        
+                    }
+                    
+                    else{
+                        cout<< "update::unknownOutput\n";
+                    }
                 }
             }
         }
@@ -403,10 +410,10 @@ void ofxTimedDrone::easeVolume(){
         float newVolume = soundPlayer.getVolume()* inverseEasing + volumeEasing* targetVolume;
         if ( abs(newVolume-targetVolume) < .01) {
             newVolume = targetVolume;
-            cout<< "hitting target volume\n";
+            //cout<< "hitting target volume\n";
         }
         else{
-            cout<< "easing volume\n";
+            //cout<< "easing volume\n";
         }
         soundPlayer.setVolume( newVolume );
     }
@@ -415,45 +422,51 @@ void ofxTimedDrone::easeVolume(){
 
 //--------------------------------------------------------------
 void ofxTimedDrone::parseJsonFromBackend(ofxJSONElement inNode){
-    Json::Path testPath( ".weather.temperature");
-    Json::Value myTemp =  testPath.resolve(inNode);
-    //TODO make it parse Json::Paths
-    /*
-    cout << "parseJsonFromBackend::" << myTemp.type() <<endl;
-    //switch( )
-    vector<string> members = inNode.getMemberNames();
-    cout << "members:" ;
-    for ( int i = 0; i < members.size(); i++ ){
-        cout <<  members[i]<<",";
-        //go through and init the arduinos as you need them to be
-        vector< ofxSimpleSerial*>* arduinos =  droneCommandToListOfSerials[ members[ i ]];
-        
-        if (arduinos != NULL){ //if there's anything to respond to that message
-            
-            cout << "we have commands for:" + members[i] <<endl;
-            for( int j = 0; j < arduinos->size(); j++ ){
-                string message = members[ i ] + ":"+ inNode[ members[ i ]].asString()+"\n"; //so if there's '  "temp":"30"  ' in the json, it comes out as 'temp:30' to the arduino
-                cout << "writing:" << message << endl;
-                (*arduinos)[j]->writeString( message);
-            }
-        }
-        else{
-            cout << "we have no commands for:" + members[i] <<endl;
-        }
-    }
-    cout << endl;*/
+    //Json::Path testPath( ".weather.temperature");
+    //Json::Value myTemp =  testPath.resolve(inNode);
     
+    for( int i = 0; i < jsonArduinoCommands.size(); i++ ){
+        CommandPath* curCommand = jsonArduinoCommands[i];
+        Json::Value curResult = curCommand->path->resolve(inNode);
+        if (curResult.type() != Json::nullValue){
+
+            //send the command to the arduino
+            stringstream ss (stringstream::in | stringstream::out);
+            ss << curCommand->name <<":";
+            switch (curResult.type()) {
+                case Json::stringValue:
+                    ss << curResult.asString() << "\n";
+                    break;
+                    
+                case Json::intValue:
+                case Json::uintValue:
+                    ss << curResult.asInt() << "\n";
+                    break;
+                case Json::realValue:
+                    ss << round( curResult.asFloat()) << "\n";
+                    break;
+                default:
+                    break;
+            }
+            
+            
+            cout << "parseJsonFromBackend::command:" <<ss.str();
+            curCommand->serial->writeString(ss.str());
+            //curCommand->serial->writeString("go\n");
+        }
+        
+    }
 }
 
 //--------------------------------------------------------------
 void ofxTimedDrone::go(){
-    resetVideos();
+
     curEventIndex = 0;
     timeWent = true;
 }
 
 //--------------------------------------------------------------
-void ofxTimedDrone::resetVideos(){
+void ofxTimedDrone::resetCurSequence(){
     
     switch (playerType){
         case QTKIT:
@@ -477,6 +490,8 @@ void ofxTimedDrone::resetVideos(){
             }
             break;
     }
+    
+    targetVolume = ambientVolume;
 
 }
 
@@ -551,10 +566,10 @@ void ofxTimedDrone::drawDroneVids(){
                 SyncedOFVideoPlayer* curPlayer = curSequence->qtVideoPlayers[ i ];
                 
                 if ( curPlayer->isPlaying() ){
-                    cout << "drawing qt vid:"<<i<<endl;
+                    //cout << "drawing qt vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                     //curPlayer->draw( i * vidWidth,0, vidWidth, vidHeight  );
-                    cout << "drawing qt vid:"<<i<< ", vidWidth:"<< vidWidth << ", vidHeight:" <<vidHeight << endl;
+                    //cout << "drawing qt vid:"<<i<< ", vidWidth:"<< vidWidth << ", vidHeight:" <<vidHeight << endl;
                     curPlayer->draw( 0,0, vidWidth, vidHeight  );
                     
                 }
@@ -568,7 +583,7 @@ void ofxTimedDrone::drawDroneVids(){
                 ofxAVFVideoPlayer* curPlayer = curSequence->avfVideoPlayers[ i ];
                 
                 if ( curPlayer->getPlaying() ){
-                    cout << "drawing avf vid:"<<i<<endl;
+                    //cout << "drawing avf vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                     
                     curPlayer->draw( 0,0, vidWidth, vidHeight  );

@@ -10,7 +10,11 @@
 #include "SyncedOFVideoPlayer.h"
 #include "SyncSequence.h"
 
-
+struct CommandPath{
+    string name;
+    Json::Path* path;
+    ofxSimpleSerial* serial;
+};
 
 class ofxTimedDrone : public ofBaseApp{
     
@@ -69,7 +73,7 @@ public:
     void parseDronServer( ofxJSONElement inNode ); //parses the server information from the config //currently not implemented
     void parseSoundInfo( ofxJSONElement inNode );
     
-    void addCommand( string command, ofxSimpleSerial* serial);  //when the arduino node is parsed, it looks for commands
+    void addCommand(string inPath, string inCommand, ofxSimpleSerial *serial);  //when the arduino node is parsed, it looks for commands
     //sent from the server to send config info to the arduino.
     //It passes it through unmodified.
     //TODO: There might need to be a way to pass a function to parse that info rather than just pass it through
@@ -91,7 +95,7 @@ public:
     void parseJsonFromBackend( ofxJSONElement inNode );  //when the new json comes in, besides just go time,
     //it has to send the correct commands to the arduinos
     
-    void resetVideos(); //stops the videos and resets them to 0
+    void resetCurSequence(); //stops the videos and resets them to 0
     
     void drawDroneVids();           //draw the videos
     void updateDroneVids();         //updates the vids
@@ -116,8 +120,7 @@ public:
     
     map<string, ofxSimpleSerial*> arduinoNamesToSerials;
     
-    map<string, vector<ofxSimpleSerial*>* > droneCommandToListOfSerials; //this is a dictionary where a configuration maps to a list of arduinos who need that configuration set
-    //LOOK AT ALL THOSE POINTERS #ballin'
+    vector< CommandPath*> jsonArduinoCommands;
     ofxJSONElement configJson;
     
     ofxJSONElement result;
