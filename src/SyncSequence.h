@@ -21,6 +21,16 @@ enum PlayerType{
     THREADED_AVF
 };
 
+class GlobalThreadedVids{
+public:
+    static int numLoadedThreadedVids;
+    static vector< ofxThreadedVideoPlayer*> players; //don't hate
+    
+};
+
+
+//vector< ofxThreadedVideoPlayer*> GlobalThreadedVids::players;
+
 class SyncSequence{
     
     

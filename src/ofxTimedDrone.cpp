@@ -238,9 +238,10 @@ void ofxTimedDrone::droneCheckForGo(){
     
     
     //TODO remove this and just make it run update until all threaded videos are ready
-    if ( playerType == THREADED_AVF && curSequence->numThreadedVidsReady < curSequence->threadedVideoPlayers.size()){
-        for( int i = 0; i < curSequence->threadedVideoPlayers.size(); i++ ){
-            curSequence->threadedVideoPlayers[i]->update();
+    //if ( playerType == THREADED_AVF && curSequence->numThreadedVidsReady < curSequence->threadedVideoPlayers.size()){
+    if ( playerType == THREADED_AVF && GlobalThreadedVids::numLoadedThreadedVids < GlobalThreadedVids::players.size() ){
+        for( int i = 0; i < GlobalThreadedVids::players.size(); i++ ){
+            GlobalThreadedVids::players[i]->update();
         }
     }
     else if ( timeWent ) {
@@ -283,10 +284,20 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
     cout << "ofxTimedDrone::goFireEvent:" << inEvent->type <<endl;
     
     if ( inEvent->type == "fireArduino" ){
-        arduinoNamesToSerials[inEvent->arduinoName]->writeString("go\n");
+        if ( arduinoNamesToSerials[inEvent->arduinoName] != NULL ){
+           arduinoNamesToSerials[inEvent->arduinoName]->writeString("go\n");
+        }
+        else{
+            cout << "No arduino named " << inEvent->arduinoName << endl;
+        }
     }
     else if ( inEvent->type == "wipeArduino" ){
-        arduinoNamesToSerials[inEvent->arduinoName]->writeString("rset\n");
+        if ( arduinoNamesToSerials[inEvent->arduinoName] != NULL ){
+            arduinoNamesToSerials[ inEvent->arduinoName ]->writeString("rset\n");
+        }
+        else{
+            cout << "No arduino named " << inEvent->arduinoName << endl;
+        }
     }
     else if ( inEvent->type == "vidFire" ){
         switch(playerType){

@@ -7,6 +7,8 @@
 //
 
 #include "SyncSequence.h"
+int GlobalThreadedVids::numLoadedThreadedVids = 0;
+vector< ofxThreadedVideoPlayer*> GlobalThreadedVids::players; //don't hate
 
 SyncSequence::SyncSequence( string inType){
     numThreadedVidsReady = 0;
@@ -128,6 +130,8 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
             
         case THREADED_AVF:
             threadedVidPlayer = new ofxThreadedVideoPlayer();
+            //GlobalThreadedVids::players.push_back( threadedVidPlayer);
+            
             ofAddListener(threadedVidPlayer->videoIsReadyEvent, this, &SyncSequence::videoIsReadyCallback);
             threadedVidPlayer->loadVideo(vidName);
             threadedVidPlayer->setLoopMode(OF_LOOP_NONE);
@@ -174,5 +178,8 @@ void SyncSequence::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
     //status.player->play();
     //status.player->setPosition(0);
     status.player->setPaused(true);
+    //this gets called during thread lock, so we should be thread safe
+    numThreadedVidsReady++;
+    
     
 }
