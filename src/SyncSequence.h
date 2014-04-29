@@ -15,7 +15,15 @@
 #include "ofxThreadedVideoPlayer.h"
 #include "SyncedOFVideoPlayer.h"
 
+enum PlayerType{
+    QTKIT,
+    AVF,
+    THREADED_AVF
+};
+
 class SyncSequence{
+    
+    
 public:
     SyncSequence( string inType );
     
@@ -28,5 +36,16 @@ public:
     vector<uint> vidStartTimes; //kind of inelegant, corresponds to the videos, sets their start time
     
     void sortList();
+    
+    void parseFromJson( ofxJSONElement inNode, PlayerType inType );
+    void parseVidNode( ofxJSONElement inNode ); //parses a single video config node, making all the necessary firevents to start and stop a video
+    
+    PlayerType playerType;
+    void videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status);
+    
+    int numThreadedVidsReady;
+    void parseDroneDuino(ofxJSONElement inNode);
+    
+    
 };
 #endif /* defined(__SyncedDroneAddon__SyncSequence__) */

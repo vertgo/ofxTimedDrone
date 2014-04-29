@@ -5,10 +5,8 @@
 //--------------------------------------------------------------
 void ofxTimedDrone::setup(){
     
-    playerType = AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
+    playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
-    //TODO don't set this here
-    curSequence = new SyncSequence( "all" );
     
     //some default settings in case it doesn't work
     serverIP = "10.0.1.7";
@@ -24,8 +22,6 @@ void ofxTimedDrone::setup(){
     loadDroneConfig();
     ofSetVerticalSync(true);
     ofSetFrameRate(30);
-    
-
 
     
     msgTx	= "";
@@ -47,7 +43,6 @@ void ofxTimedDrone::setup(){
     
     curEventIndex = 0;
     cout <<"setup::3\n";
-    numThreadedVidsReady = 0;
     ofSetFullscreen(true);    
 }
 
@@ -57,43 +52,47 @@ void ofxTimedDrone::setup(){
 //--------------------------------------------------------------
 void ofxTimedDrone::loadDroneConfig(){
     string configPath = "config.json";
-    bool parsingSuccessful = droneResult.open(configPath);
+    bool parsingSuccessful = configJson.open(configPath);
     
-    parseServerInfo(droneResult["server"]);
-    parsePlayerInfo(droneResult["player"]);
+    parseSettings( configJson["settings"] );
+    if ( configJson[ "arduinos" ].type()!= Json::nullValue ){
+        parseArduinoNames( configJson[ "arduinos" ]);
+    }
+    else{
+        cout <<"hey, no arduinos specified, that's cool\n";
+        cout << "configJson:" << configJson.toStyledString();
+    }
+    
     //cout << "loadDroneConfig:success:" <<parsingSuccessful <<endl;
-    //cout << "loadDroneCOnfig:: config:" <<droneResult.toStyledString() <<endl;
-    ofxJSONElement videoNodes = droneResult["videos"];
-    ofxJSONElement arduinoNodes = droneResult["arduinos"];
-    if ( droneResult["sound"].type() != Json::nullValue ){
-        parseSoundInfo( droneResult["sound"] );
-    }
-    int numVideos = videoNodes.size();
+    //cout << "loadDroneCOnfig:: config:" <<configJson.toStyledString() <<endl;
+    ofxJSONElement optionNodes = configJson[ "options" ];
     
-    for( int i = 0; i < numVideos; i++ ){
-        ofxJSONElement curVidNode = videoNodes[ i];
-        parseDroneVid(curVidNode);
-        cout << "parsing video";
+    if (optionNodes.type() == Json::nullValue ){
+        cout << "hey, there's no options\n";
+    }
+    
+    int numOptions = optionNodes.size();
+    for( int i = 0; i < numOptions; i++ ){
+        //read an option and add it to the map
+        ofxJSONElement curOptionNode = optionNodes[ i ];
+        string curOptionName = curOptionNode[ "option" ].asString();
+        SyncSequence* curParsingSequence = new SyncSequence( curOptionName );
+        optionNameToSequence[ curOptionName] = curParsingSequence;
+        curParsingSequence->parseFromJson(curOptionNode, playerType);
         
-    }
-    
-    int numArduinos = arduinoNodes.size();
-    for( int i = 0; i < numArduinos; i++ ){
-        parseDroneDuino( arduinoNodes[i] );
-        cout << "parsing arduino";
-        
+        //make the first sequence the default, for now
+        if ( i == 0 ){
+            curSequence = defaultSequence = curParsingSequence;
+        }
     }
     
     
-    cout << "numVideos:" <<numVideos << ", numArduinos:"<< numArduinos <<endl;
-    
-    
-    curSequence->sortList();
-
     
 }
+
+
 //--------------------------------------------------------------
-void ofxTimedDrone::parseServerInfo(ofxJSONElement inNode){
+void ofxTimedDrone::parseSettings(ofxJSONElement inNode){
     serverIP = (inNode["ip"].type() == Json::nullValue) ? serverIP: inNode["ip"].asString() ;
     //if it's null, set it to its current value, if not, set it to value in the config
     
@@ -102,49 +101,45 @@ void ofxTimedDrone::parseServerInfo(ofxJSONElement inNode){
     
     reconnectTime = (inNode["reconnectTime"].type() == Json::nullValue) ? reconnectTime : inNode["reconnectTime"].asInt() ;
     //and reconnectTime
+    
+    //now read the sound info from the settings node
+    if ( inNode["soundFile"].type() != Json::nullValue ){
+        parseSoundInfo( inNode );
+    }
+    
+    cout << "parseSettings::" << inNode.toStyledString();
+    parsePlayerInfo( inNode["playerType"] );
+    
 }
 //--------------------------------------------------------------
-void ofxTimedDrone::parseDroneDuino(ofxJSONElement inNode){
-    string arduinoName = inNode[ "arduino"].asString();
-    
-    ofxSimpleSerial* serial = new ofxSimpleSerial();
-    
-    //commented this out for debug
-    serial->setup( arduinoName, 9600);
-	serial->startContinuousRead(false);
-    droneArduinos.push_back(serial);
-    
-    
-    //now make an event for the arduino to fire
-    FireEvent* arduinoFire = new FireEvent( "fireArduino");
-    arduinoFire->fireTime = inNode[ "fireTime"].asFloat() * 1000;
-    arduinoFire->serial = serial;
-    curSequence->droneEventList.push_back(arduinoFire);
-    
-    if (inNode[ "wipeTime"].type() == Json::nullValue){
-        cout << "no wipetime\n";
-    }
-    else{
+void ofxTimedDrone::parseArduinoNames(ofxJSONElement inNode){
+    int numArduinos = inNode.size();
+    for ( int i = 0; i < numArduinos; i++ ){
+        ofxJSONElement curArduinoDeviceNode = inNode[i];
+        ofxSimpleSerial* serial = new ofxSimpleSerial();
+        string deviceName = curArduinoDeviceNode[ "device"].asString();
+        serial->setup( deviceName, 9600);
+        serial->startContinuousRead(false);
+        //droneArduinos.push_back(serial);
         
-        cout << "wipeTime exists:" << inNode[ "wipeTime" ] <<endl;
-        FireEvent* arduinoWipe = new FireEvent( "wipeArduino");
-        arduinoWipe->fireTime =inNode[ "wipeTime" ].asFloat() * 1000;//whew
-        arduinoWipe->serial = serial;
-        curSequence->droneEventList.push_back(arduinoWipe);
-    }
-    
-    ofxJSONElement commands = inNode["commands"];
-    if ( commands.type() != Json::nullValue ){
-        cout << "parsing commands\n";
-        int numCommands = commands.size();
-        for( int i = 0; i < numCommands; i++ ){
-            addCommand(commands[i].asString(), serial);
+        string arduinoName = curArduinoDeviceNode[ "name"].asString();
+        arduinoNamesToSerials[arduinoName] = serial;
+        cout << "ofxTimeDrone::parseArduinoNames::arduinoName:" << arduinoName <<" has device" << deviceName <<endl;
+        
+        ofxJSONElement commands = curArduinoDeviceNode["commands"];
+        if ( commands.type() != Json::nullValue ){
+            cout << "parsing commands\n";
+            int numCommands = commands.size();
+            for( int i = 0; i < numCommands; i++ ){
+                addCommand(commands[i].asString(), serial);
+            }
         }
     }
 }
+
+
 //--------------------------------------------------------------
-void ofxTimedDrone::parsePlayerInfo(ofxJSONElement inNode){
-    ofxJSONElement ptypeNode = inNode["type"];
+void ofxTimedDrone::parsePlayerInfo(ofxJSONElement ptypeNode){
     if ( ptypeNode != Json::nullValue){
         string ptypeString = ptypeNode.asString();
         if ( ptypeString == "qtkit"){
@@ -169,137 +164,58 @@ void ofxTimedDrone::addCommand(string command, ofxSimpleSerial *serial){
         droneCommandToListOfSerials[ command] = serialList;
     }
     
-    
     serialList->push_back( serial );
     cout << "adding arduino command:" << command <<endl;
 }
 //--------------------------------------------------------------
 void ofxTimedDrone::parseSoundInfo(ofxJSONElement inNode){
-    string soundName = inNode["file"].asString();
+    if ( inNode["soundFile"].type() != Json::nullValue ){
+        string soundName = inNode["soundFile"].asString();
+        soundPlayer.loadSound(soundName);
+        soundPlayer.play();
+    }
     
     if( inNode["easing"].type() != Json::nullValue ){
         volumeEasing = ofClamp( inNode["easing"].asFloat(), 0.001f, .9f);
     }
-    FireEvent* soundFireEvent = new FireEvent( "soundFire");
-    soundFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
-    cout <<"Making a sound:" << soundName << ", that starts at:" <<((float)soundFireEvent->fireTime)/1000.f;
-    curSequence->droneEventList.push_back(soundFireEvent);
     
-    targetVolume = ambientVolume = inNode["ambientVolume"].asFloat();
-    turntUp = inNode["turntup"].asFloat();
-    cout << "ambientVolume:"<<ambientVolume<<endl;
-    cout << "turntup:"<<turntUp<<endl;
+    
+    //TODO make sure the soundFire events are made from the sync sequences
+    //FireEvent* soundFireEvent = new FireEvent( "soundFire");
+    //soundFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
+    //cout <<"Making a sound:" << soundName << ", that starts at:" <<((float)soundFireEvent->fireTime)/1000.f;
+    //curSequence->droneEventList.push_back(soundFireEvent);
+    
+    
+    if ( inNode["ambientVolume"].type() != Json::nullValue ){
+        targetVolume = ambientVolume = inNode["ambientVolume"].asFloat();
+        cout << "ambientVolume:"<<ambientVolume<<endl;
+    }
+
+    if ( inNode["ambientVolume"].type() != Json::nullValue ){
+        turntUp = inNode["turntup"].asFloat();
+        cout << "turntup:"<<turntUp<<endl;
+    }
+    
+    //TODO also read the stop events into the syncsequence
     //if ( inNode["stopTime"].type() != Json::nullValue ){
-    FireEvent* stopEvent = new FireEvent( "soundStop" );
-    stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
+    //FireEvent* stopEvent = new FireEvent( "soundStop" );
+    //stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
     
-    curSequence->droneEventList.push_back(stopEvent);
-    cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
+    //curSequence->droneEventList.push_back(stopEvent);
+    //cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
     //}
     
-    soundPlayer.loadSound(soundName);
+
     soundPlayer.setVolume(ambientVolume);
     soundPlayer.setLoop(true);
-    soundPlayer.play();
-    
-    
-    cout << endl;
+
+
     
 }
 
 //--------------------------------------------------------------
-void ofxTimedDrone::parseDroneVid(ofxJSONElement inNode){
-    string vidName = inNode["file"].asString();
-    FireEvent* vidFireEvent = new FireEvent( "vidFire");
-    vidFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
-    curSequence->vidStartTimes.push_back( vidFireEvent->fireTime ); //store it as the start time for the video of this index
-    cout <<"Making a video:" << vidName << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
-    curSequence->droneEventList.push_back(vidFireEvent);
-    
-    SyncedOFVideoPlayer* vidPlayer;
-    ofxAVFVideoPlayer* avVidPlayer;
-    ofxThreadedVideoPlayer* threadedVidPlayer;
-    float volume = 1.f;
-    if ( inNode["volume"].type() != Json::nullValue ){
-        volume = inNode["volume"].asFloat();
-    }
-    switch ( playerType ){
-        case QTKIT:
-            vidPlayer = new SyncedOFVideoPlayer();
-            vidPlayer->setLoopState(OF_LOOP_NONE);
 
-            vidPlayer->loadMovie(vidName);
-            vidFireEvent->player = vidPlayer;
-            curSequence->qtVideoPlayers.push_back(vidPlayer);
-
-            //hack to make it sync better
-            vidPlayer->play();
-            vidPlayer->setPosition(0);
-            vidPlayer->setPaused(true);
-            vidPlayer->setVolume(volume);
-            break;
-            
-        case AVF:
-            avVidPlayer = new ofxAVFVideoPlayer();
-            avVidPlayer->setLoopState(OF_LOOP_NONE);
-            avVidPlayer->loadMovie(vidName);
-
-            vidFireEvent->avPlayer = avVidPlayer;
-            curSequence->avfVideoPlayers.push_back(avVidPlayer);
-            avVidPlayer->play();
-            avVidPlayer->setPosition(0);
-            avVidPlayer->setPaused(true);
-            avVidPlayer->setVolume(volume);
-            break;
-            
-        case THREADED_AVF:
-            threadedVidPlayer = new ofxThreadedVideoPlayer();
-            ofAddListener(threadedVidPlayer->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback);
-            threadedVidPlayer->loadVideo(vidName);
-            threadedVidPlayer->setLoopMode(OF_LOOP_NONE);
-            threadedVidPlayer->setVolume(volume);
-            vidFireEvent->threadedPlayer = threadedVidPlayer;
-            curSequence->threadedVideoPlayers.push_back(threadedVidPlayer);
-            
-            /*threadedVidPlayer->play();
-            threadedVidPlayer->setPosition(0);
-            threadedVidPlayer->setPaused(true);
-            */
-
-            
-            break;
-    }
-    
-    
-
-    
-    if ( inNode["stopTime"].type() != Json::nullValue ){
-        FireEvent* stopEvent = new FireEvent( "vidStop" );
-        stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
-        
-        switch ( playerType ){
-            case QTKIT:
-                stopEvent->player = vidPlayer;
-                break;
-                
-            case AVF:
-                stopEvent->avPlayer = avVidPlayer;
-                break;
-                
-            case THREADED_AVF:
-                stopEvent->threadedPlayer = threadedVidPlayer;
-                break;
-                
-        }
-        
-        curSequence->droneEventList.push_back(stopEvent);
-        cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
-    }
-    
-    cout << endl;
-    
-}
-//--------------------------------------------------------------
 
 void ofxTimedDrone::droneCheckForGo(){
     unsigned long long now = ofGetSystemTime();
@@ -321,7 +237,8 @@ void ofxTimedDrone::droneCheckForGo(){
     
     
     
-    if ( playerType == THREADED_AVF && numThreadedVidsReady < curSequence->threadedVideoPlayers.size()){
+    //TODO remove this and just make it run update until all threaded videos are ready
+    if ( playerType == THREADED_AVF && curSequence->numThreadedVidsReady < curSequence->threadedVideoPlayers.size()){
         for( int i = 0; i < curSequence->threadedVideoPlayers.size(); i++ ){
             curSequence->threadedVideoPlayers[i]->update();
         }
@@ -366,10 +283,10 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
     cout << "ofxTimedDrone::goFireEvent:" << inEvent->type <<endl;
     
     if ( inEvent->type == "fireArduino" ){
-        inEvent->serial->writeString("go\n");
+        arduinoNamesToSerials[inEvent->arduinoName]->writeString("go\n");
     }
     else if ( inEvent->type == "wipeArduino" ){
-        inEvent->serial->writeString("rset\n");
+        arduinoNamesToSerials[inEvent->arduinoName]->writeString("rset\n");
     }
     else if ( inEvent->type == "vidFire" ){
         switch(playerType){
@@ -388,19 +305,16 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
     else if ( inEvent->type == "vidStop" ){
         switch(playerType){
             case QTKIT:
-                //inEvent->player->stop();
                 inEvent->player->setPosition(0);
                 inEvent->player->setPaused(true);
                 break;
                 
             case AVF:
-                //inEvent->avPlayer->stop();
                 inEvent->avPlayer->setPosition(0);
                 inEvent->avPlayer->setPaused(true);
                 break;
                 
             case THREADED_AVF:
-                //inEvent->threadedPlayer->stop();
                 inEvent->threadedPlayer->setPosition(0);
                 inEvent->threadedPlayer->setPaused(true);
                 
@@ -438,14 +352,37 @@ void ofxTimedDrone::update(){
                 
                 // our debug info
                 //cout << result.getRawString() << endl;
-                unsigned long long newGoTime = (unsigned long long)result[ "goTime"].asInt64();//.asUInt();
-                goTime = newGoTime;
-                timeWent = false;
                 
-                parseJsonFromServer(result);
+                
+                
+                //if it's a goTime message, find the event and set go
+                if ( result["goTime"].type() != Json::nullValue ){
+                    cout << "update::parsing goTime\n";
+                    //{"goTime":1398718870436,"eventType":"sports"}[/TCP]
+                    unsigned long long newGoTime = (unsigned long long)result[ "goTime"].asInt64();//.asUInt();
+                    string eventType = result[ "eventType"].asString();
+                    //TODO stop videos in the last current sequence
+                    if ( optionNameToSequence[ eventType] != NULL){
+                        curSequence = optionNameToSequence[ eventType];
+                    }
+                    else{
+                        curSequence = defaultSequence;
+                    }
+                    goTime = newGoTime;
+                    timeWent = false;
+                }
+                
+                //if it's an update from the backend, parse it
+                else if ( result["backendData"].type() != Json::nullValue ){
+                    cout << "update::parsing the backend Data\n";
+                    parseJsonFromBackend(result["backendData"]);
+                    
+                }
+                
+                else{
+                    cout<< "update::unknownOutput\n";
+                }
             }
-            
-            
         }
     }
     else {
@@ -482,8 +419,13 @@ void ofxTimedDrone::easeVolume(){
 }
 
 //--------------------------------------------------------------
-void ofxTimedDrone::parseJsonFromServer(ofxJSONElement inNode){
-    
+void ofxTimedDrone::parseJsonFromBackend(ofxJSONElement inNode){
+    Json::Path testPath( ".weather.temperature");
+    Json::Value myTemp =  testPath.resolve(inNode);
+    //TODO make it parse Json::Paths
+    /*
+    cout << "parseJsonFromBackend::" << myTemp.type() <<endl;
+    //switch( )
     vector<string> members = inNode.getMemberNames();
     cout << "members:" ;
     for ( int i = 0; i < members.size(); i++ ){
@@ -504,20 +446,10 @@ void ofxTimedDrone::parseJsonFromServer(ofxJSONElement inNode){
             cout << "we have no commands for:" + members[i] <<endl;
         }
     }
-    cout << endl;
+    cout << endl;*/
     
 }
 
-//--------------------------------------------------------------
-void ofxTimedDrone::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
-    cout << "videoIsReadyCallback\n";
-    numThreadedVidsReady++; //hope there's not a race condition here
-    ofRemoveListener(status.player->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback);
-    status.player->play();
-    //status.player->setPosition(0);
-    status.player->setPaused(true);
-    
-}
 //--------------------------------------------------------------
 void ofxTimedDrone::go(){
     resetVideos();
@@ -560,12 +492,11 @@ void ofxTimedDrone::draw(){
     
 }
 
-
 //--------------------------------------------------------------
 void ofxTimedDrone::updateDroneVids(){
     
     
-    //hack, remove 300 ms, because it takes about 1/3rd of a second to start the play
+    //hack, remove 200 ms, because it takes about 1/3rd of a second to start the play
     long long now = ofGetSystemTime() - 200;
     
     
@@ -608,8 +539,6 @@ void ofxTimedDrone::updateDroneVids(){
             break;
      }
     
-    
-    
 }
 
 
@@ -644,7 +573,7 @@ void ofxTimedDrone::drawDroneVids(){
                 ofxAVFVideoPlayer* curPlayer = curSequence->avfVideoPlayers[ i ];
                 
                 if ( curPlayer->getPlaying() ){
-                    //cout << "drawing avf vid:"<<i<<endl;
+                    cout << "drawing avf vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                     
                     curPlayer->draw( 0,0, vidWidth, vidHeight  );
@@ -657,11 +586,11 @@ void ofxTimedDrone::drawDroneVids(){
             numVids = curSequence->threadedVideoPlayers.size();
             
             for( int i = 0; i< curSequence->threadedVideoPlayers.size(); i++ ){
-                //cout << "drawing threaded vid:"<<i<<endl;
+                //cout << "possibly drawing threaded vid:"<<i<<endl;
                 ofxThreadedVideoPlayer* curPlayer = curSequence->threadedVideoPlayers[ i ];
                 
                 if ( curPlayer->isPlaying() ){
-                    
+                //cout << "drawing threaded vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                     curPlayer->draw( 0,0, vidWidth, vidHeight  );
                     
@@ -677,7 +606,6 @@ void ofxTimedDrone::drawDroneVids(){
 }
 //--------------------------------------------------------------
 void ofxTimedDrone::testGo(){
-    //TODO set gotime == now and then go
     goTime = ofGetSystemTime();
     go();
 }

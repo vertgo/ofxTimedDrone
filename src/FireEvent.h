@@ -25,7 +25,7 @@ public:
     
     //bool fired; //should be ignored in favor of sorting by fire time,
                 //but since they're so few this would be coded faster
-    ofxSimpleSerial* serial;
+    string arduinoName;
     ofVideoPlayer* player;
     ofxAVFVideoPlayer* avPlayer;
     ofxThreadedVideoPlayer* threadedPlayer;

@@ -14,11 +14,6 @@
 
 class ofxTimedDrone : public ofBaseApp{
     
-    enum PlayerType{
-        QTKIT,
-        AVF,
-        THREADED_AVF
-    };
     
 public:
     
@@ -37,7 +32,11 @@ public:
     void gotMessage(ofMessage msg);
     void go();
     
+
+    
     SyncSequence* curSequence;
+    SyncSequence* defaultSequence;
+    
     
     //server stuff
     string serverIP;
@@ -58,12 +57,18 @@ public:
     
     //All the config load
     void loadDroneConfig();         //loads the config file
-    void parseServerInfo( ofxJSONElement inNode );  //parses the server settings, ip address, port, timeout
+
+    
+    
+    void parseSettings( ofxJSONElement inNode );  //parses the server settings, ip address, port, timeout
     void parsePlayerInfo( ofxJSONElement inNode );  //parses the player info, qtkit, avf, or
-    void parseDroneVid( ofxJSONElement inNode ); //parses a single video config node, making all the necessary firevents to start and stop a video
-    void parseDroneDuino( ofxJSONElement inNode ); //parses a single arduino config node
+    
+    void parseOptions( ofxJSONElement inNode );
+    void parseArduinoNames( ofxJSONElement inNode );
+    
     void parseDronServer( ofxJSONElement inNode ); //parses the server information from the config //currently not implemented
     void parseSoundInfo( ofxJSONElement inNode );
+    
     void addCommand( string command, ofxSimpleSerial* serial);  //when the arduino node is parsed, it looks for commands
     //sent from the server to send config info to the arduino.
     //It passes it through unmodified.
@@ -79,7 +84,11 @@ public:
     
     //TODO: maybe put in a reset function when it hits here? Unless a general reset is specified?
     
-    void parseJsonFromServer( ofxJSONElement inNode );  //when the new json comes in, besides just go time,
+    
+    
+    
+    
+    void parseJsonFromBackend( ofxJSONElement inNode );  //when the new json comes in, besides just go time,
     //it has to send the correct commands to the arduinos
     
     void resetVideos(); //stops the videos and resets them to 0
@@ -89,7 +98,6 @@ public:
     void testGo();                  //sets the gotime to the current time and tests a run before the server tells the drone to
     void testGoNow();               //sets the gotime to some time in the past where the first event is now
     void videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status);
-    int numThreadedVidsReady;
     
     
     ofSoundPlayer soundPlayer;
@@ -104,9 +112,13 @@ public:
     vector< ofxSimpleSerial*> droneArduinos;    //list of arduinos, not actually necessary
     
     
+    map<string, SyncSequence*> optionNameToSequence;
+    
+    map<string, ofxSimpleSerial*> arduinoNamesToSerials;
+    
     map<string, vector<ofxSimpleSerial*>* > droneCommandToListOfSerials; //this is a dictionary where a configuration maps to a list of arduinos who need that configuration set
     //LOOK AT ALL THOSE POINTERS #ballin'
-    ofxJSONElement droneResult;
+    ofxJSONElement configJson;
     
     ofxJSONElement result;
     ofxTCPClient tcpClient;
