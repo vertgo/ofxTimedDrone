@@ -102,12 +102,16 @@ void SyncSequence::parseDroneDuino(ofxJSONElement inNode){
 
 //--------------------------------------------------------------
 void SyncSequence::parseVidNode(ofxJSONElement inNode){
-    string vidID = inNode["id"].asString();
+    //string vidID = inNode["id"].asString();
     FireEvent* vidFireEvent = new FireEvent( "vidFire");
+    vidFireEvent->setIDs( inNode["id"] );
+    //cout << "SyncSequence::parseVidNode::" << inNode.toStyledString() <<endl;
+    
     vidFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
-    vidStartTimes[vidID] = ( vidFireEvent->fireTime ); //store it as the start time for the video of this index
-    cout <<"Making a video event:" << vidID << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
-    vidFireEvent->vidID = vidID;
+    //vidStartTimes[vidID] = ( vidFireEvent->fireTime ); //store it as the start time for the video of this index
+    //cout <<"Making a video event:" << vidID << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
+    
+    //vidFireEvent->vidID = vidID;
     droneEventList.push_back(vidFireEvent);
 
     
@@ -115,11 +119,22 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
         FireEvent* stopEvent = new FireEvent( "vidStop" );
         stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
         
-        stopEvent->vidID = vidID;
+        //stopEvent->vidID = vidID;
+        stopEvent->vidStartEvent = vidFireEvent; //so it can stop the videos when it starts
+        
         droneEventList.push_back(stopEvent);
         cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
     }
     
     cout << endl;
     
+}
+
+//--------------------------------------------------------------
+void SyncSequence::cycle(){
+    for ( int i = 0; i < droneEventList.size(); i++ ){
+        if ( droneEventList[ i ]->type == "vidFire" ){
+            droneEventList[ i ] ->cycle();
+        }
+    }
 }

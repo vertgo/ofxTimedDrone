@@ -27,8 +27,15 @@ public:
                 //but since they're so few this would be coded faster
     string arduinoName;
     string vidID;
+    vector<string> vidIDs;
     
     
+    void setIDs( ofxJSONElement inNode);
+    void cycle(); //moves to the next video for the next sequence
+    FireEvent* vidStartEvent;
+    
+private:
+    int curVidIDIndex;
 };
 
 #endif /* defined(__ofxN2STempDisplay__FireEvent__) */

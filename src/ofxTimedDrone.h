@@ -130,6 +130,7 @@ public:
     map<string, ofxThreadedVideoPlayer*> idToThreadedPlayers;
     map<string, SyncedOFVideoPlayer*> idToQTPlayers;
     map<string, ofxAVFVideoPlayer*> idToAVFPlayers;
+    map<string, uint> vidStartTimes;
     map< ofxThreadedVideoPlayer*, float> playerToVolume; //the players can't set the volume til they're loaded
     
     vector< CommandPath*> jsonArduinoCommands;

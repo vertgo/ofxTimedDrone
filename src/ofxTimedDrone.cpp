@@ -92,9 +92,6 @@ void ofxTimedDrone::loadDroneConfig(){
             curSequence = defaultSequence = curParsingSequence;
         }
     }
-    
-    
-    
 }
 
 
@@ -383,6 +380,7 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
     else if ( inEvent->type == "vidFire" ){
         cout << "vid ID:" << inEvent->vidID <<endl;
         switch(playerType){
+                
             case QTKIT:
                 idToQTPlayers[ inEvent->vidID]->play();
                 break;
@@ -394,22 +392,24 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 break;
             
         }
+        vidStartTimes[ inEvent->vidID] = inEvent->fireTime;
     }
     else if ( inEvent->type == "vidStop" ){
+        //the stop event points to the start event
         switch(playerType){
             case QTKIT:
-                idToQTPlayers[ inEvent->vidID]->setPosition(0);
-                idToQTPlayers[ inEvent->vidID]->setPaused(true);
+                idToQTPlayers[ inEvent->vidStartEvent->vidID]->setPosition(0);
+                idToQTPlayers[ inEvent->vidStartEvent->vidID]->setPaused(true);
                 break;
                 
             case AVF:
-                idToAVFPlayers[ inEvent->vidID]->setPosition(0);
-                idToAVFPlayers[ inEvent->vidID]->setPaused(true);
+                idToAVFPlayers[ inEvent->vidStartEvent->vidID]->setPosition(0);
+                idToAVFPlayers[ inEvent->vidStartEvent->vidID]->setPaused(true);
                 break;
                 
             case THREADED_AVF:
-                idToThreadedPlayers[ inEvent->vidID]->setPosition(0);
-                idToThreadedPlayers[ inEvent->vidID]->setPaused(true);
+                idToThreadedPlayers[ inEvent->vidStartEvent->vidID]->setPosition(0);
+                idToThreadedPlayers[ inEvent->vidStartEvent->vidID]->setPaused(true);
                 
                 break;
                 
@@ -601,6 +601,7 @@ void ofxTimedDrone::resetCurSequence(){
             break;
     }
     
+    curSequence->cycle();
     targetVolume = ambientVolume;
 
 }
@@ -632,7 +633,7 @@ void ofxTimedDrone::updateDroneVids(){
                 string id = iter->first;
                 SyncedOFVideoPlayer* curPlayer = iter->second;
                 
-                long long playHead = now - goTime - curSequence->vidStartTimes[ id ];
+                long long playHead = now - goTime - vidStartTimes[ id ];
                 if ( curPlayer->isPlaying() ){
                     curPlayer->syncToTime(playHead);
                     curPlayer->update();
@@ -648,7 +649,7 @@ void ofxTimedDrone::updateDroneVids(){
                 ofxAVFVideoPlayer* curAVFPlayer = iterAVF->second;
                 
                 
-                long long playHead = now - goTime - curSequence->vidStartTimes[ id ];
+                long long playHead = now - goTime - vidStartTimes[ id ];
                 
                 
                 if ( curAVFPlayer->getPlaying() ){
@@ -668,7 +669,7 @@ void ofxTimedDrone::updateDroneVids(){
                 string id = iterThreaded->first;
                 ofxThreadedVideoPlayer* curAVFPlayer = iterThreaded->second;
                 
-                long long playHead = now - goTime - curSequence->vidStartTimes[id];
+                long long playHead = now - goTime - vidStartTimes[id];
 
                 if ( curAVFPlayer->isPlaying() ){
                     curAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
