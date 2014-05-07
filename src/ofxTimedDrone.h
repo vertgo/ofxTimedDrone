@@ -65,7 +65,14 @@ public:
     
     
     void parseSettings( ofxJSONElement inNode );  //parses the server settings, ip address, port, timeout
+    
+    void parseVideos( ofxJSONElement inNode ); //parses a node with all the videos
+    void loadVideo( string inFile, string inVidID, float inVolume = 1.f ); //loads a video and stores it
+    
+    
     void parsePlayerInfo( ofxJSONElement inNode );  //parses the player info, qtkit, avf, or
+
+    
     
     void parseOptions( ofxJSONElement inNode );
     void parseArduinoNames( ofxJSONElement inNode );
@@ -117,8 +124,13 @@ public:
     
     
     map<string, SyncSequence*> optionNameToSequence;
-    
     map<string, ofxSimpleSerial*> arduinoNamesToSerials;
+    
+    //for all the different kind of videos
+    map<string, ofxThreadedVideoPlayer*> idToThreadedPlayers;
+    map<string, SyncedOFVideoPlayer*> idToQTPlayers;
+    map<string, ofxAVFVideoPlayer*> idToAVFPlayers;
+    map< ofxThreadedVideoPlayer*, float> playerToVolume; //the players can't set the volume til they're loaded
     
     vector< CommandPath*> jsonArduinoCommands;
     ofxJSONElement configJson;

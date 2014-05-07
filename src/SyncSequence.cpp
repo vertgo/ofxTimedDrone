@@ -102,101 +102,24 @@ void SyncSequence::parseDroneDuino(ofxJSONElement inNode){
 
 //--------------------------------------------------------------
 void SyncSequence::parseVidNode(ofxJSONElement inNode){
-    string vidName = inNode["file"].asString();
+    string vidID = inNode["id"].asString();
     FireEvent* vidFireEvent = new FireEvent( "vidFire");
     vidFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
-    vidStartTimes.push_back( vidFireEvent->fireTime ); //store it as the start time for the video of this index
-    cout <<"Making a video:" << vidName << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
+    vidStartTimes[vidID] = ( vidFireEvent->fireTime ); //store it as the start time for the video of this index
+    cout <<"Making a video event:" << vidID << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
+    vidFireEvent->vidID = vidID;
     droneEventList.push_back(vidFireEvent);
-    
-    SyncedOFVideoPlayer* vidPlayer;
-    ofxAVFVideoPlayer* avVidPlayer;
-    ofxThreadedVideoPlayer* threadedVidPlayer;
-    float volume = 1.f;
-    if ( inNode["volume"].type() != Json::nullValue ){
-        volume = inNode["volume"].asFloat();
-    }
-    switch ( playerType ){
-        case QTKIT:
-            vidPlayer = new SyncedOFVideoPlayer();
-            vidPlayer->setLoopState(OF_LOOP_NONE);
-            
-            vidPlayer->loadMovie(vidName);
-            vidFireEvent->player = vidPlayer;
-            qtVideoPlayers.push_back(vidPlayer);
-            
-            //hack to make it sync better
-            vidPlayer->play();
-            vidPlayer->setPosition(0);
-            vidPlayer->setPaused(true);
-            vidPlayer->setVolume(volume);
-            break;
-            
-        case AVF:
-            avVidPlayer = new ofxAVFVideoPlayer();
-            avVidPlayer->setLoopState(OF_LOOP_NONE);
-            avVidPlayer->loadMovie(vidName);
-            
-            vidFireEvent->avPlayer = avVidPlayer;
-            avfVideoPlayers.push_back(avVidPlayer);
-            avVidPlayer->play();
-            avVidPlayer->setPosition(0);
-            avVidPlayer->setPaused(true);
-            avVidPlayer->setVolume(volume);
-            break;
-            
-        case THREADED_AVF:
-            threadedVidPlayer = new ofxThreadedVideoPlayer();
-            GlobalThreadedVids::players.push_back( threadedVidPlayer);
-            
-            ofAddListener(threadedVidPlayer->videoIsReadyEvent, this, &SyncSequence::videoIsReadyCallback);
-            threadedVidPlayer->loadVideo(vidName);
-            threadedVidPlayer->setLoopMode(OF_LOOP_NONE);
-            threadedVidPlayer->setVolume(volume);
-            playerToVolume[ threadedVidPlayer] = volume;
-            vidFireEvent->threadedPlayer = threadedVidPlayer;
-            threadedVideoPlayers.push_back(threadedVidPlayer);
-            
-            
-            
-            break;
-    }
+
     
     if ( inNode["stopTime"].type() != Json::nullValue ){
         FireEvent* stopEvent = new FireEvent( "vidStop" );
         stopEvent->fireTime = inNode["stopTime"].asFloat() * 1000;
         
-        switch ( playerType ){
-            case QTKIT:
-                stopEvent->player = vidPlayer;
-                break;
-                
-            case AVF:
-                stopEvent->avPlayer = avVidPlayer;
-                break;
-                
-            case THREADED_AVF:
-                stopEvent->threadedPlayer = threadedVidPlayer;
-                break;
-                
-        }
-        
+        stopEvent->vidID = vidID;
         droneEventList.push_back(stopEvent);
         cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
     }
     
     cout << endl;
-    
-}
-//--------------------------------------------------------------
-void SyncSequence::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
-    cout << "videoIsReadyCallback\n";
-    ofRemoveListener(status.player->videoIsReadyEvent, this, &SyncSequence::videoIsReadyCallback);
-    //status.player->play();
-    //status.player->setPosition(0);
-    status.player->setPaused(true);
-    //this gets called during thread lock, so we should be thread safe
-    GlobalThreadedVids::numLoadedThreadedVids++;
-    status.player->setVolume( playerToVolume[ status.player] );
     
 }

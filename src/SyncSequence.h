@@ -43,7 +43,7 @@ public:
     vector< ofxThreadedVideoPlayer*> threadedVideoPlayers;  //vector of all the vids for threaded
     
     vector< FireEvent* > droneEventList; //list of fire events ordered in sequence
-    vector<uint> vidStartTimes; //kind of inelegant, corresponds to the videos, sets their start time
+    map<string, uint> vidStartTimes; //kind of inelegant, corresponds to the videos, sets their start time
     
     void sortList();
     
@@ -56,7 +56,7 @@ public:
     
     //int numThreadedVidsReady;
     void parseDroneDuino(ofxJSONElement inNode);
-    map< ofxThreadedVideoPlayer*, float> playerToVolume; //the players can't set the volume til they're loaded
+
     
     
 };
