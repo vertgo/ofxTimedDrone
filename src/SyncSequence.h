@@ -57,7 +57,7 @@ public:
     
     //int numThreadedVidsReady;
     void parseDroneDuino(ofxJSONElement inNode);
-    void cycle();
+    void cycle( string inTag = "");
     
     
 };

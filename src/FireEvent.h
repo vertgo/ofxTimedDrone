@@ -28,10 +28,12 @@ public:
     string arduinoName;
     string vidID;
     vector<string> vidIDs;
+    map< string, vector< string>* > tagToIds;
     
     
     void setIDs( ofxJSONElement inNode);
-    void cycle(); //moves to the next video for the next sequence
+    void setTags( ofxJSONElement inNode );
+    void cycle( string inTag = ""); //moves to the next video for the next sequence // defaults to nothing
     FireEvent* vidStartEvent;
     
 private:

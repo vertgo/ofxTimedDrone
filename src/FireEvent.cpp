@@ -18,15 +18,44 @@ FireEvent::FireEvent( string inType ){
     
 }
 
+//for tag type instead of id type
+void FireEvent::setTags(ofxJSONElement inNode){
+    int numTags = inNode.size();
+    if ( inNode.size() < 1 ){
+        //error
+        throw "tagsEmpty";
+    }
+    for ( int i = 0; i < numTags; i++ ){
+        ofxJSONElement curTagNode = inNode[ i ];
+        string curTag = curTagNode[ "tag"].asString();
+        vector<string>* tagIDs = new vector<string>(); //now we're getting pretty abstract
+        
+        ofxJSONElement idsNode = curTagNode[ "id"];
+        
+        int numIDs = idsNode.size();
+        for ( int j = 0; j < numIDs; j++ ){
+            tagIDs->push_back(idsNode[ j].asString());
+        }
+        tagToIds[ curTag ] = tagIDs;
+        //give it at least a single vidID
+        //vidID = (*tagIDs)[ 0 ]; //ugh, dereference pointer to access element
+        
+    }
+    
+}
+
 void FireEvent::setIDs(ofxJSONElement inNode){
     int numIDs;
     
     switch( inNode.type() ){
+            
+        //it is just a single id to play
         case Json::stringValue:
             vidID = inNode.asString();
             vidIDs.push_back( inNode.asString() );
             break;
-            
+        
+        //it is a set of ids to play or cycle between
         case Json::arrayValue:
             numIDs = inNode.size();
             if ( numIDs < 1 ){
@@ -46,10 +75,56 @@ void FireEvent::setIDs(ofxJSONElement inNode){
     
 }
 
-void FireEvent::cycle(){
-    curVidIDIndex++;
-    if (curVidIDIndex >= vidIDs.size() ){
-        curVidIDIndex = 0;
+
+
+void FireEvent::cycle( string inTag ){
+    
+    map<string, vector<string>* >::iterator iterTag;
+    for (iterTag = tagToIds.begin(); iterTag != tagToIds.end(); ++iterTag) {
+        cout << "FireEvent::cycle::1:sequence:" << iterTag->first <<endl;
     }
-    vidID = vidIDs[ curVidIDIndex ];
+    
+    if ( vidIDs.size() == 0 ){ //there are no vidIDs, so it must have tags
+        //pick from some tags
+        
+        //USE AT instead of [ ] or else it will create an element
+        vector<string>* curIDs;
+        if ( tagToIds.count(inTag)) {
+            curIDs = tagToIds.at( inTag );
+            
+        }
+        else{
+           
+            
+            //just pick the first item if the tag doesn't exist
+            
+            
+            //firstItem = ++(tagToIds.begin()); //
+            /*
+            for (iterTag = tagToIds.begin(); iterTag != tagToIds.end(); ++iterTag) {
+                       cout << "FireEvent::cycle::2:sequence:" << iterTag->first <<endl;
+            }*/
+            
+            //leftoff tryng to figure out why there's an empty key in the tagToIds
+            //cout <<  "FireEvent::cycle:" <<firstItem->first;
+            curIDs = tagToIds.begin()->second ; //hack to have graceful failure
+            
+        }
+        
+        //this kind of sucks, but i don't want to keep an index per tag
+        curVidIDIndex++;
+        if (curVidIDIndex >= curIDs->size() ){
+            curVidIDIndex = 0;
+        }
+        vidID = (*curIDs)[ curVidIDIndex];
+    }
+    
+    //if it's not cycle dependent
+    else{
+        curVidIDIndex++;
+        if (curVidIDIndex >= vidIDs.size() ){
+            curVidIDIndex = 0;
+        }
+        vidID = vidIDs[ curVidIDIndex ];
+    }
 }

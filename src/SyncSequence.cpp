@@ -104,7 +104,18 @@ void SyncSequence::parseDroneDuino(ofxJSONElement inNode){
 void SyncSequence::parseVidNode(ofxJSONElement inNode){
     //string vidID = inNode["id"].asString();
     FireEvent* vidFireEvent = new FireEvent( "vidFire");
-    vidFireEvent->setIDs( inNode["id"] );
+    //look if it has tags
+    if ( inNode["tags"].type() != Json::nullValue ){
+        //it uses tags rather than ids
+        vidFireEvent->setTags(inNode["tags"]);
+    }
+    else if ( inNode["id"].type() != Json::nullValue ){
+        vidFireEvent->setIDs( inNode["id"] );
+    }
+    else{
+        globalErrorMessage += "vidNode has no tags or ids" + inNode.toStyledString();
+        
+    }
     //cout << "SyncSequence::parseVidNode::" << inNode.toStyledString() <<endl;
     
     vidFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
@@ -131,10 +142,10 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
 }
 
 //--------------------------------------------------------------
-void SyncSequence::cycle(){
+void SyncSequence::cycle( string inTag ){
     for ( int i = 0; i < droneEventList.size(); i++ ){
         if ( droneEventList[ i ]->type == "vidFire" ){
-            droneEventList[ i ] ->cycle();
+            droneEventList[ i ] ->cycle( inTag );
         }
     }
 }

@@ -49,6 +49,8 @@ public:
     
     int lastConnectTime;
     
+    string curTag;
+    
     
     //drone stuff
     unsigned long long goTime;      //specifies the time to "go" when the sequence of events across all drones begins,

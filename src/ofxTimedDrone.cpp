@@ -7,7 +7,7 @@ void ofxTimedDrone::setup(){
     
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
-    
+    curTag = "";
     //some default settings in case it doesn't work
     serverIP = "10.0.1.7";
     port = 1337;
@@ -465,11 +465,13 @@ void ofxTimedDrone::update(){
                         if ( optionNameToSequence[ eventType] != NULL){
                             resetCurSequence(); //for the current sequence before starting the next
                             curSequence = optionNameToSequence[ eventType];
+                            curSequence->cycle( curTag );
                         }
                         else{
                             resetCurSequence();
                             
                             curSequence = defaultSequence;
+                            curSequence->cycle( curTag );
                         }
                         goTime = newGoTime;
                         timeWent = false;
@@ -558,6 +560,8 @@ void ofxTimedDrone::parseJsonFromBackend(ofxJSONElement inNode){
         }
         
     }
+    
+    //TODO make this read a path
 }
 
 //--------------------------------------------------------------
@@ -609,7 +613,7 @@ void ofxTimedDrone::resetCurSequence(){
             break;
     }
     
-    curSequence->cycle();
+    
     targetVolume = ambientVolume;
 
 }
@@ -771,6 +775,7 @@ void ofxTimedDrone::drawDroneVids(){
 //--------------------------------------------------------------
 void ofxTimedDrone::testGo(){
     resetCurSequence();
+    curSequence->cycle( curTag );
     goTime = ofGetSystemTime();
     go();
 }
@@ -779,6 +784,8 @@ void ofxTimedDrone::testGo(){
 void ofxTimedDrone::testGoNow(){
     resetCurSequence();
     //find the first event time
+    curSequence->cycle( curTag );
+    
     goTime = ofGetSystemTime() - curSequence->droneEventList[0]->fireTime;
     go();
 }
