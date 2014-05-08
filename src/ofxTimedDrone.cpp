@@ -1,11 +1,13 @@
 #include "ofxTimedDrone.h"
-
+#include "ofxSosoRenderer.h"
 
 
 //--------------------------------------------------------------
 void ofxTimedDrone::setup(){
-    
+    ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofxSosoRenderer(false)));
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
+    
+    
     
     
     //some default settings in case it doesn't work
@@ -708,8 +710,7 @@ void ofxTimedDrone::drawDroneVids(){
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                     //curPlayer->draw( i * vidWidth,0, vidWidth, vidHeight  );
                     //cout << "drawing qt vid:"<<i<< ", vidWidth:"<< vidWidth << ", vidHeight:" <<vidHeight << endl;
-                    curPlayer->draw( 0,0, vidWidth, vidHeight  );
-                    
+                    curPlayer->draw(-ofGetWidth()/2, ofGetHeight()/2 - (ofGetHeight() -vidHeight)/2, vidWidth, -vidHeight);
                 }
             }
         break;
@@ -722,8 +723,7 @@ void ofxTimedDrone::drawDroneVids(){
                     //cout << "drawing avf vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                     
-                    curPlayer->draw( 0,0, vidWidth, vidHeight  );
-                    
+                    curPlayer->draw(-ofGetWidth()/2, ofGetHeight()/2 - (ofGetHeight() -vidHeight)/2, vidWidth, -vidHeight);
                 }
             }
 
@@ -739,7 +739,7 @@ void ofxTimedDrone::drawDroneVids(){
                 if ( curPlayer->isPlaying() ){
                 //cout << "drawing threaded vid:"<<i<<endl;
                     float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
-                    curPlayer->draw( 0,0, vidWidth, vidHeight  );
+                    curPlayer->draw(-ofGetWidth()/2, ofGetHeight()/2 - (ofGetHeight() -vidHeight)/2, vidWidth, -vidHeight);
                     
                 }
             }
