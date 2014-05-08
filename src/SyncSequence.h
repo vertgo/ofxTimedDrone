@@ -28,6 +28,7 @@ public:
     
 };
 
+static string globalErrorMessage = "";
 
 //vector< ofxThreadedVideoPlayer*> GlobalThreadedVids::players;
 

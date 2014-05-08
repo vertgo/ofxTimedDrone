@@ -53,6 +53,9 @@ void ofxTimedDrone::setup(){
 void ofxTimedDrone::loadDroneConfig(){
     string configPath = "config.json";
     bool parsingSuccessful = configJson.open(configPath);
+    if ( !parsingSuccessful ){
+        globalErrorMessage += "Parsing config was unsuccessful\n";
+    }
     
     parseSettings( configJson["settings"] );
     parseVideos( configJson["videos"] );
@@ -70,7 +73,8 @@ void ofxTimedDrone::loadDroneConfig(){
     ofxJSONElement optionNodes = configJson[ "options" ];
     
     if (optionNodes.type() == Json::nullValue ){
-        cout << "hey, there's no options\n";
+        //cout << "hey, there's no options\n";
+        globalErrorMessage += "hey, there's no options in the config file\n";
     }
     
     int numOptions = optionNodes.size();
@@ -78,14 +82,14 @@ void ofxTimedDrone::loadDroneConfig(){
        cout << "ofxTimedDrone::loadDroneConfig::1\n";
         //read an option and add it to the map
         ofxJSONElement curOptionNode = optionNodes[ i ];
-        cout << "ofxTimedDrone::loadDroneConfig::2\n";
+
         string curOptionName = curOptionNode[ "option" ].asString();
-        cout << "ofxTimedDrone::loadDroneConfig::2.5\n";
+
         SyncSequence* curParsingSequence = new SyncSequence( curOptionName );
-        cout << "ofxTimedDrone::loadDroneConfig::3\n";
+
         optionNameToSequence[ curOptionName] = curParsingSequence;
         curParsingSequence->parseFromJson(curOptionNode, playerType);
-        cout << "ofxTimedDrone::loadDroneConfig::4\n";
+
         //make the first sequence the default, for now
         if ( i == 0 ){
             cout << "ofxTimedDrone::loadDroneConfig::5\n";
@@ -111,7 +115,7 @@ void ofxTimedDrone::parseSettings(ofxJSONElement inNode){
         parseSoundInfo( inNode );
     }
     
-    cout << "parseSettings::" << inNode.toStyledString();
+    //cout << "parseSettings::" << inNode.toStyledString();
     parsePlayerInfo( inNode["playerType"] );
     
 }
@@ -129,13 +133,16 @@ void ofxTimedDrone::parseVideos(ofxJSONElement inNode){
             path = curNode["path"].asString();
         }
         else{
-            cout << "ofxTimedDrone::parseVideos::ERROR! NO PATH FOR VID";
+            cout << "ofxTimedDrone::parseVideos::ERROR! NO PATH FOR VID\n";
+            globalErrorMessage += "ofxTimedDrone::parseVideos::ERROR! NO PATH FOR VID\n";
+            
         }
         if ( curNode["id"].type() != Json::nullValue ){
             id = curNode["id"].asString();
         }
         else{
-            cout << "ofxTimedDrone::parseVideos::ERROR! NO ID FOR VID";
+            cout << "ofxTimedDrone::parseVideos::ERROR! NO ID FOR VID\n";
+            globalErrorMessage += "ofxTimedDrone::parseVideos::ERROR! NO ID FOR VID\n";
         }
         if ( curNode["volume"].type() != Json::nullValue ){
             volume = curNode["volume"].asFloat();
@@ -189,7 +196,7 @@ void ofxTimedDrone::loadVideo(string inFile, string inVidID, float inVolume){
             threadedVidPlayer->setVolume(inVolume);
             playerToVolume[ threadedVidPlayer] = inVolume;
             
-            cout << "loadVideo::id:" << inVidID << ", path:" << inFile;
+            //cout << "loadVideo::id:" << inVidID << ", path:" << inFile;
             idToThreadedPlayers[ inVidID] = threadedVidPlayer;
             
             break;
@@ -198,12 +205,13 @@ void ofxTimedDrone::loadVideo(string inFile, string inVidID, float inVolume){
 
 //--------------------------------------------------------------
 void ofxTimedDrone::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
-    cout << "videoIsReadyCallback\n";
-    ofRemoveListener(status.player->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback);
-    status.player->setPaused(true);
+    
+    //cout << "videoIsReadyCallback\n";
+    ofRemoveListener( status.player->videoIsReadyEvent, this, &ofxTimedDrone::videoIsReadyCallback );
+    status.player->setPaused( true );
     //this gets called during thread lock, so we should be thread safe
     GlobalThreadedVids::numLoadedThreadedVids++;
-    status.player->setVolume( playerToVolume[ status.player] );
+    status.player->setVolume( playerToVolume[ status.player ] );
     
 }
 
@@ -608,6 +616,13 @@ void ofxTimedDrone::resetCurSequence(){
 
 //--------------------------------------------------------------
 void ofxTimedDrone::draw(){
+    if (globalErrorMessage.length() > 0){
+        ofSetColor(0, 0, 0);
+        ofDrawBitmapString(globalErrorMessage, 30, 30);
+        
+    }
+    
+
     ofSetColor(255, 255, 255 );
     drawDroneVids();
     
@@ -714,6 +729,7 @@ void ofxTimedDrone::drawDroneVids(){
                 }
             }
         break;
+        case AVF:
             for (iterAVF = idToAVFPlayers.begin(); iterAVF != idToAVFPlayers.end(); ++iterAVF) {
                 string id = iterAVF->first;
                 ofxAVFVideoPlayer* curPlayer = iterAVF->second;
@@ -775,6 +791,10 @@ void ofxTimedDrone::keyPressed(int key){
         
         case 'n':
             testGoNow();
+            break;
+            
+        case 'c':
+            globalErrorMessage = "";
             break;
             
         default:
