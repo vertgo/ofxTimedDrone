@@ -50,6 +50,8 @@ public:
     int lastConnectTime;
     
     string curTag;
+    string tagpath;
+    bool    hasTag;
     
     
     //drone stuff

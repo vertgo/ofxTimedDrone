@@ -7,7 +7,7 @@ void ofxTimedDrone::setup(){
     ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofxSosoRenderer(false)));
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
-
+    hasTag = false;
     curTag = "";
     //some default settings in case it doesn't work
     serverIP = "10.0.1.7";
@@ -44,7 +44,8 @@ void ofxTimedDrone::setup(){
     
     curEventIndex = 0;
     cout <<"setup::3\n";
-    ofSetFullscreen(true);    
+    ofSetFullscreen(true);
+    
 }
 
 //used for sorting events
@@ -118,6 +119,12 @@ void ofxTimedDrone::parseSettings(ofxJSONElement inNode){
     
     //cout << "parseSettings::" << inNode.toStyledString();
     parsePlayerInfo( inNode["playerType"] );
+    
+    if ( inNode[ "tagpath"].type() != Json::nullValue ){
+        tagpath = inNode[ "tagpath" ].asString();
+        hasTag = tagpath.length() > 0;
+        cout << "ofxTimedDrone::parseSettings:hasTag::" << hasTag<<", path:" << tagpath <<endl;
+    }
     
 }
 
@@ -461,6 +468,15 @@ void ofxTimedDrone::update(){
                         cout << "update::parsing goTime\n";
                         //{"goTime":1398718870436,"eventType":"sports"}[/TCP]
                         unsigned long long newGoTime = (unsigned long long)result[ "goTime"].asInt64();//.asUInt();
+                        
+                        if ( hasTag && result[ tagpath ].type() == Json::stringValue ){
+                            curTag = result[ tagpath ].asString();
+                            cout << "update::parsing::curTag:" << curTag <<endl;
+                        }
+                        else{
+                            curTag = "";
+                        }
+                        
                         string eventType = result[ "eventType"].asString();
                         //TODO stop videos in the last current sequence
                         if ( optionNameToSequence[ eventType] != NULL){
