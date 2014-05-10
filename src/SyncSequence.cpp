@@ -125,7 +125,7 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
     
     vidFireEvent->fireTime = inNode["fireTime"].asFloat() * 1000;
     //vidStartTimes[vidID] = ( vidFireEvent->fireTime ); //store it as the start time for the video of this index
-    //cout <<"Making a video event:" << vidID << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
+    cout <<"Making a video event:" << vidFireEvent->vidID << ", that starts at:" <<((float)vidFireEvent->fireTime)/1000.f;
     
     //vidFireEvent->vidID = vidID;
     droneEventList.push_back(vidFireEvent);

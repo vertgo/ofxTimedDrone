@@ -16,6 +16,11 @@ FireEvent::FireEvent( string inType ){
     vidID = "";
     curVidIDIndex = 0;
     
+    if (type == ""){
+        
+        cout << "Fireevent why" <<endl;
+    }
+    
     
 }
 
@@ -84,6 +89,7 @@ void FireEvent::setIDsAsTags(ofxJSONElement inNode){
     
     string curTag;
     vector<string>* tagIDs;
+    string curID;
     
     switch( inNode.type() ){
             
@@ -101,18 +107,22 @@ void FireEvent::setIDsAsTags(ofxJSONElement inNode){
             //it is a set of ids to play or cycle between
         case Json::arrayValue:
             
-            tagIDs = new vector<string>(); //now we're getting pretty abstract
+            
             
             numIDs = inNode.size();
             if ( numIDs < 1 ){
                 return;
             }
             for( int i = 0; i < numIDs; i++ ){
-                tagIDs->push_back(inNode[ i ].asString());
+                tagIDs = new vector<string>(); //now we're getting pretty abstract
+                curID = inNode[ i ].asString();
+                tagIDs->push_back( curID );
+                curTag = ofToLower(curID);
+                tagToIds[ curTag ] = tagIDs;
             }
-            curTag = vidID = (*tagIDs)[ 0 ];
-            curTag = ofToLower(curTag);
-            tagToIds[ curTag ] = tagIDs; //this shouldn't ever really happen, since we are dfaulting it anyways
+            //curTag = vidID = (*tagIDs)[ 0 ];
+            
+            
             break;
             
         default:
@@ -130,11 +140,8 @@ void FireEvent::cycle( string inTag ){
     
     inTag = ofToLower(inTag);
     
-    /*map<string, vector<string>* >::iterator iterTag;
-    for (iterTag = tagToIds.begin(); iterTag != tagToIds.end(); ++iterTag) {
-        cout << "FireEvent::cycle::1:sequence:" << iterTag->first <<endl;
-    }*/
     
+    cout << "FireEvent::cycle:" <<inTag <<endl; //pick the next thing
     if ( vidIDs.size() == 0 ){ //there are no vidIDs, so it must have tags
         //pick from some tags
         
@@ -145,19 +152,8 @@ void FireEvent::cycle( string inTag ){
             
         }
         else{
-           
-            
+
             //just pick the first item if the tag doesn't exist
-            
-            
-            //firstItem = ++(tagToIds.begin()); //
-            /*
-            for (iterTag = tagToIds.begin(); iterTag != tagToIds.end(); ++iterTag) {
-                       cout << "FireEvent::cycle::2:sequence:" << iterTag->first <<endl;
-            }*/
-            
-            //leftoff tryng to figure out why there's an empty key in the tagToIds
-            //cout <<  "FireEvent::cycle:" <<firstItem->first;
             curIDs = tagToIds.begin()->second ; //hack to have graceful failure
             
         }

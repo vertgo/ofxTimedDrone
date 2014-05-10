@@ -99,7 +99,7 @@ void ofxTimedDrone::loadDroneConfig(){
         SyncSequence* curParsingSequence = new SyncSequence( curOptionName );
 
         optionNameToSequence[ curOptionName] = curParsingSequence;
-        
+
         curParsingSequence->parseFromJson(curOptionNode, playerType);
 
         //make the first sequence the default, for now
@@ -459,8 +459,8 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 break;
                 
             case THREADED_AVF:
-                getPlayerForID( inEvent->vidStartEvent->vidID)->setPosition(0);
-                getPlayerForID(  inEvent->vidStartEvent->vidID)->setPaused(true);
+                getPlayerForID( lastPlayID)->setPosition(0);
+                getPlayerForID( lastPlayID)->setPaused(true);
                 
                 break;
                 
