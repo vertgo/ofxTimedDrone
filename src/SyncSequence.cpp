@@ -7,6 +7,8 @@
 //
 
 #include "SyncSequence.h"
+#include "ofxTimedDrone.h"
+
 int GlobalThreadedVids::numLoadedThreadedVids = 0;
 vector< ofxThreadedVideoPlayer*> GlobalThreadedVids::players; //don't hate
 
@@ -108,6 +110,9 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
     if ( inNode["tags"].type() != Json::nullValue ){
         //it uses tags rather than ids
         vidFireEvent->setTags(inNode["tags"]);
+    }
+    else if ( ofxTimedDrone::globalHasTag ){ //ie, it doesn't have a tag, but we are calling it anyways
+        vidFireEvent->setIDsAsTags( inNode["id"] );
     }
     else if ( inNode["id"].type() != Json::nullValue ){
         vidFireEvent->setIDs( inNode["id"] );

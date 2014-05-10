@@ -16,6 +16,8 @@
 #include "ofxAVFVideoPlayer.h"
 #include "ofxThreadedVideoPlayer.h"
 
+//ugly hack
+
 class FireEvent{
 public:
     FireEvent(string inType );
@@ -32,6 +34,7 @@ public:
     
     
     void setIDs( ofxJSONElement inNode);
+    void setIDsAsTags( ofxJSONElement inNode ); //a hack to default the tag the same as the id
     void setTags( ofxJSONElement inNode );
     void cycle( string inTag = ""); //moves to the next video for the next sequence // defaults to nothing
     FireEvent* vidStartEvent;

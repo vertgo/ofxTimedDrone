@@ -8,6 +8,7 @@
 
 #include "FireEvent.h"
 
+
 FireEvent::FireEvent( string inType ){
     //initialize the event from the node
     //fireTime = inNode["fireTime"].asFloat() *1000;
@@ -20,6 +21,7 @@ FireEvent::FireEvent( string inType ){
 
 //for tag type instead of id type
 void FireEvent::setTags(ofxJSONElement inNode){
+    
     int numTags = inNode.size();
     if ( inNode.size() < 1 ){
         //error
@@ -36,6 +38,7 @@ void FireEvent::setTags(ofxJSONElement inNode){
         for ( int j = 0; j < numIDs; j++ ){
             tagIDs->push_back(idsNode[ j].asString());
         }
+        curTag = ofToLower(curTag);
         tagToIds[ curTag ] = tagIDs;
         //give it at least a single vidID
         //vidID = (*tagIDs)[ 0 ]; //ugh, dereference pointer to access element
@@ -49,13 +52,13 @@ void FireEvent::setIDs(ofxJSONElement inNode){
     
     switch( inNode.type() ){
             
-        //it is just a single id to play
+            //it is just a single id to play
         case Json::stringValue:
             vidID = inNode.asString();
             vidIDs.push_back( inNode.asString() );
             break;
-        
-        //it is a set of ids to play or cycle between
+            
+            //it is a set of ids to play or cycle between
         case Json::arrayValue:
             numIDs = inNode.size();
             if ( numIDs < 1 ){
@@ -76,13 +79,61 @@ void FireEvent::setIDs(ofxJSONElement inNode){
 }
 
 
+void FireEvent::setIDsAsTags(ofxJSONElement inNode){
+    int numIDs;
+    
+    string curTag;
+    vector<string>* tagIDs;
+    
+    switch( inNode.type() ){
+            
+            //it is just a single id to play
+        case Json::stringValue:
+            curTag = vidID = inNode.asString();
+
+            curTag = ofToLower(curTag);
+            
+            vidIDs.push_back( inNode.asString() );
+            tagIDs = new vector<string>(); //now we're getting pretty abstract
+            tagToIds[ curTag ] = tagIDs;
+            break;
+            
+            //it is a set of ids to play or cycle between
+        case Json::arrayValue:
+            
+            tagIDs = new vector<string>(); //now we're getting pretty abstract
+            
+            numIDs = inNode.size();
+            if ( numIDs < 1 ){
+                return;
+            }
+            for( int i = 0; i < numIDs; i++ ){
+                tagIDs->push_back(inNode[ i ].asString());
+            }
+            curTag = vidID = (*tagIDs)[ 0 ];
+            curTag = ofToLower(curTag);
+            tagToIds[ curTag ] = tagIDs; //this shouldn't ever really happen, since we are dfaulting it anyways
+            break;
+            
+        default:
+            cout <<"FireEvent::setIDs::error!, unknown type:" <<  inNode.type() << endl;
+            cout << "inNode:" << inNode.toStyledString();
+            //throw "wtf is this?";
+    }
+    
+    
+}
+
+
 
 void FireEvent::cycle( string inTag ){
     
-    map<string, vector<string>* >::iterator iterTag;
+    inTag = ofToLower(inTag);
+    
+    /*map<string, vector<string>* >::iterator iterTag;
     for (iterTag = tagToIds.begin(); iterTag != tagToIds.end(); ++iterTag) {
         cout << "FireEvent::cycle::1:sequence:" << iterTag->first <<endl;
-    }
+    }*/
     
     if ( vidIDs.size() == 0 ){ //there are no vidIDs, so it must have tags
         //pick from some tags

@@ -151,5 +151,6 @@ public:
     bool weConnected;
     PlayerType playerType;
     
-    
+    //hack
+    static bool globalHasTag;
 };

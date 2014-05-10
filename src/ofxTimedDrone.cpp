@@ -1,13 +1,13 @@
 #include "ofxTimedDrone.h"
 #include "ofxSosoRenderer.h"
-
+bool ofxTimedDrone::globalHasTag = false;
 
 //--------------------------------------------------------------
 void ofxTimedDrone::setup(){
     ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofxSosoRenderer(false)));
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
-    hasTag = false;
+    ofxTimedDrone::globalHasTag = hasTag = false;
     curTag = "";
     //some default settings in case it doesn't work
     serverIP = "10.0.1.21";
@@ -126,7 +126,7 @@ void ofxTimedDrone::parseSettings(ofxJSONElement inNode){
     
     if ( inNode[ "tagpath"].type() != Json::nullValue ){
         tagpath = inNode[ "tagpath" ].asString();
-        hasTag = tagpath.length() > 0;
+        ofxTimedDrone::globalHasTag = hasTag = tagpath.length() > 0;
         cout << "ofxTimedDrone::parseSettings:hasTag::" << hasTag<<", path:" << tagpath <<endl;
     }
     
