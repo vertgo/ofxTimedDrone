@@ -122,6 +122,7 @@ public:
     float targetVolume;
     void easeVolume();
     float volumeEasing;
+    ofxThreadedVideoPlayer* getPlayerForID( string inID);
     
     
     //TODO change this to arduinoNameToSerial map
@@ -133,13 +134,13 @@ public:
     
     //for all the different kind of videos
     map<string, ofxThreadedVideoPlayer*> idToThreadedPlayers;
-    map<ofxThreadedVideoPlayer*, string> threadedPlayersToID;
     map<string, SyncedOFVideoPlayer*> idToQTPlayers;
     map<string, ofxAVFVideoPlayer*> idToAVFPlayers;
     map<string, uint> vidStartTimes;
     map< ofxThreadedVideoPlayer*, float> playerToVolume; //the players can't set the volume til they're loaded
     
     string lastPlayID;
+    string defaultPlayID;
     
     vector< CommandPath*> jsonArduinoCommands;
     ofxJSONElement configJson;

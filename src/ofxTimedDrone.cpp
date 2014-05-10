@@ -4,6 +4,9 @@ bool ofxTimedDrone::globalHasTag = false;
 
 //--------------------------------------------------------------
 void ofxTimedDrone::setup(){
+    lastPlayID = "";
+    defaultPlayID = "";
+    
     ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofxSosoRenderer(false)));
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
@@ -153,8 +156,8 @@ void ofxTimedDrone::parseVideos(ofxJSONElement inNode){
             id = curNode["id"].asString();
         }
         else{
-            cout << "ofxTimedDrone::parseVideos::ERROR! NO ID FOR VID\n";
-            globalErrorMessage += "ofxTimedDrone::parseVideos::ERROR! NO ID FOR VID\n";
+            id = path;
+            cout << "ofxTimedDrone::parseVideos::NO ID FOR VID, using path as ID\n";
         }
         if ( curNode["volume"].type() != Json::nullValue ){
             volume = curNode["volume"].asFloat();
@@ -210,7 +213,6 @@ void ofxTimedDrone::loadVideo(string inFile, string inVidID, float inVolume){
             
             //cout << "loadVideo::id:" << inVidID << ", path:" << inFile;
             idToThreadedPlayers[ inVidID] = threadedVidPlayer;
-            threadedPlayersToID[ threadedVidPlayer] = inVidID; //two way map to find it when it loads
             
             break;
     }
@@ -237,7 +239,8 @@ void ofxTimedDrone::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
             cout << iterThreaded->first;
             if ( iterThreaded->second == status.player ){
                 cout << "aha!" << iterThreaded->first <<endl;
-                lastPlayID = iterThreaded->first;
+                defaultPlayID = lastPlayID = iterThreaded->first;
+                cout << "videoIsReadyCallback::defaultPlayID:" << defaultPlayID << ", lastPlayID:" << lastPlayID <<endl;
                 status.player->play();
                 status.player->setPaused( true );
 
@@ -428,8 +431,12 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 idToAVFPlayers[ inEvent->vidID]->play();
                 break;
             case THREADED_AVF:
-                idToThreadedPlayers[ inEvent->vidID]->play();
+                getPlayerForID( inEvent->vidID)->play();
                 lastPlayID = inEvent->vidID;
+                if ( idToThreadedPlayers.count(lastPlayID ) == 0 ){
+                    //we don't have that video
+                    lastPlayID = defaultPlayID;
+                }
                 break;
             
         }
@@ -449,8 +456,8 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 break;
                 
             case THREADED_AVF:
-                idToThreadedPlayers[ inEvent->vidStartEvent->vidID]->setPosition(0);
-                idToThreadedPlayers[ inEvent->vidStartEvent->vidID]->setPaused(true);
+                getPlayerForID( inEvent->vidStartEvent->vidID)->setPosition(0);
+                getPlayerForID(  inEvent->vidStartEvent->vidID)->setPaused(true);
                 
                 break;
                 
@@ -467,6 +474,15 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
         //soundPlayer.setVolume(ambientVolume);
         targetVolume = ambientVolume;
     }
+}
+//
+ofxThreadedVideoPlayer* ofxTimedDrone::getPlayerForID( string inID){
+    if ( idToThreadedPlayers.count(inID) >0 ){
+        return( idToThreadedPlayers[ inID ]);
+    }
+        else{
+            return( idToThreadedPlayers[ defaultPlayID ] );//so it doesn't fuck up, it gracefully fails by playing the first thing
+        }
 }
 
 
@@ -658,7 +674,7 @@ void ofxTimedDrone::resetCurSequence(){
             
             cout << endl;*/
             
-            ofxThreadedVideoPlayer* curAVFPlayer = idToThreadedPlayers[ lastPlayID];
+            ofxThreadedVideoPlayer* curAVFPlayer = getPlayerForID( lastPlayID);
             curAVFPlayer->setPosition(0);
             curAVFPlayer->setPaused( true);
             break;
@@ -760,7 +776,7 @@ void ofxTimedDrone::updateDroneVids(){
             }*/
             
 
-            ofxThreadedVideoPlayer* curTAVFPlayer = idToThreadedPlayers[ lastPlayID ];
+            ofxThreadedVideoPlayer* curTAVFPlayer = getPlayerForID( lastPlayID );
             long long playHead = now - goTime - vidStartTimes[lastPlayID];
             if ( curTAVFPlayer->isPlaying() ){
                 curTAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
@@ -835,12 +851,13 @@ void ofxTimedDrone::drawDroneVids(){
                 
                 
             }*/
-            if ( idToThreadedPlayers[ lastPlayID ] != NULL ){
-                ofxThreadedVideoPlayer* curPlayer = idToThreadedPlayers[ lastPlayID ];
+            //there won't be a last play id if there isn't a video loaded yet
+            if ( lastPlayID.length() ){
+                ofxThreadedVideoPlayer* curPlayer = getPlayerForID( lastPlayID );
                 float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
                 curPlayer->draw(-ofGetWidth()/2, ofGetHeight()/2 - (ofGetHeight() -vidHeight)/2, vidWidth, -vidHeight);
-
             }
+            
             break;
         }
     
