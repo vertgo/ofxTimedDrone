@@ -133,6 +133,7 @@ public:
     
     //for all the different kind of videos
     map<string, ofxThreadedVideoPlayer*> idToThreadedPlayers;
+    map<ofxThreadedVideoPlayer*, string> threadedPlayersToID;
     map<string, SyncedOFVideoPlayer*> idToQTPlayers;
     map<string, ofxAVFVideoPlayer*> idToAVFPlayers;
     map<string, uint> vidStartTimes;

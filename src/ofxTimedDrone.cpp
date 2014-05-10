@@ -210,6 +210,7 @@ void ofxTimedDrone::loadVideo(string inFile, string inVidID, float inVolume){
             
             //cout << "loadVideo::id:" << inVidID << ", path:" << inFile;
             idToThreadedPlayers[ inVidID] = threadedVidPlayer;
+            threadedPlayersToID[ threadedVidPlayer] = inVidID; //two way map to find it when it loads
             
             break;
     }
@@ -224,6 +225,25 @@ void ofxTimedDrone::videoIsReadyCallback(ofxThreadedVideoPlayerStatus &status){
     //this gets called during thread lock, so we should be thread safe
     GlobalThreadedVids::numLoadedThreadedVids++;
     status.player->setVolume( playerToVolume[ status.player ] );
+    
+    //argh, have to find the id to this
+    
+    if ( lastPlayID == "" ){
+        
+    
+        map<string, ofxThreadedVideoPlayer*>::iterator iterThreaded;
+        for (iterThreaded = idToThreadedPlayers.begin(); iterThreaded != idToThreadedPlayers.end() && lastPlayID == ""; ++iterThreaded) {
+            
+            cout << iterThreaded->first;
+            if ( iterThreaded->second == status.player ){
+                cout << "aha!" << iterThreaded->first <<endl;
+                lastPlayID = iterThreaded->first;
+                status.player->play();
+                status.player->setPaused( true );
+
+            }
+        }
+    }
     
 }
 
@@ -453,7 +473,7 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
 //--------------------------------------------------------------
 void ofxTimedDrone::update(){
     if ( weConnected && tcpClient.isConnected() ){
-        if (ofGetElapsedTimeMillis() > 4000 ){ //hack to make it wait to parse the backend data
+        if (ofGetElapsedTimeMillis() > 0){//4000 ){ //hack to make it wait to parse the backend data
 
             string str = tcpClient.receive();
             if( str.length() > 0 ){
@@ -626,6 +646,7 @@ void ofxTimedDrone::resetCurSequence(){
         case THREADED_AVF:
             cout << "ofxTimedDrone::resetCurSequence:";
             
+            /*
             for (iterThreaded = idToThreadedPlayers.begin(); iterThreaded != idToThreadedPlayers.end(); ++iterThreaded) {
                 
                 cout << iterThreaded->first;
@@ -633,8 +654,13 @@ void ofxTimedDrone::resetCurSequence(){
                 curAVFPlayer->setPosition(0);
                 curAVFPlayer->setPaused( true);
             }
+             
             
-            cout << endl;
+            cout << endl;*/
+            
+            ofxThreadedVideoPlayer* curAVFPlayer = idToThreadedPlayers[ lastPlayID];
+            curAVFPlayer->setPosition(0);
+            curAVFPlayer->setPaused( true);
             break;
     }
     
@@ -718,7 +744,7 @@ void ofxTimedDrone::updateDroneVids(){
         case THREADED_AVF:
             
             
-            for (iterThreaded = idToThreadedPlayers.begin(); iterThreaded != idToThreadedPlayers.end(); ++iterThreaded) {
+            /*for (iterThreaded = idToThreadedPlayers.begin(); iterThreaded != idToThreadedPlayers.end(); ++iterThreaded) {
                 
                 string id = iterThreaded->first;
                 
@@ -731,6 +757,14 @@ void ofxTimedDrone::updateDroneVids(){
                     curTAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
                     curTAVFPlayer->update();
                 }
+            }*/
+            
+
+            ofxThreadedVideoPlayer* curTAVFPlayer = idToThreadedPlayers[ lastPlayID ];
+            long long playHead = now - goTime - vidStartTimes[lastPlayID];
+            if ( curTAVFPlayer->isPlaying() ){
+                curTAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
+                curTAVFPlayer->update();
             }
         
         break;
@@ -785,7 +819,7 @@ void ofxTimedDrone::drawDroneVids(){
 
             break;
         case THREADED_AVF:
-            
+            /*
             for (iterThreaded = idToThreadedPlayers.begin(); iterThreaded != idToThreadedPlayers.end(); ++iterThreaded) {
                 
                 string id = iterThreaded->first;
@@ -798,6 +832,14 @@ void ofxTimedDrone::drawDroneVids(){
                     curPlayer->draw(-ofGetWidth()/2, ofGetHeight()/2 - (ofGetHeight() -vidHeight)/2, vidWidth, -vidHeight);
                     
                 }
+                
+                
+            }*/
+            if ( idToThreadedPlayers[ lastPlayID ] != NULL ){
+                ofxThreadedVideoPlayer* curPlayer = idToThreadedPlayers[ lastPlayID ];
+                float vidHeight = vidWidth/curPlayer->getWidth() * curPlayer->getHeight();
+                curPlayer->draw(-ofGetWidth()/2, ofGetHeight()/2 - (ofGetHeight() -vidHeight)/2, vidWidth, -vidHeight);
+
             }
             break;
         }
