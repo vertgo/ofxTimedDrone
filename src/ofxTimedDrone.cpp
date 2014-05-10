@@ -10,6 +10,8 @@ void ofxTimedDrone::setup(){
     ofSetCurrentRenderer(ofPtr<ofBaseRenderer>(new ofxSosoRenderer(false)));
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
+    ofHideCursor();
+    
     ofxTimedDrone::globalHasTag = hasTag = false;
     curTag = "";
     //some default settings in case it doesn't work
@@ -97,6 +99,7 @@ void ofxTimedDrone::loadDroneConfig(){
         SyncSequence* curParsingSequence = new SyncSequence( curOptionName );
 
         optionNameToSequence[ curOptionName] = curParsingSequence;
+        
         curParsingSequence->parseFromJson(curOptionNode, playerType);
 
         //make the first sequence the default, for now
