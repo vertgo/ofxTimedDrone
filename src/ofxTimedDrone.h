@@ -48,7 +48,8 @@ public:
     int reconnectTime;
     
     int lastConnectTime;
-    
+    uint lastErrorTime;
+    int lastErrorLength;
     string curTag;
     string tagpath;
     bool    hasTag;
@@ -136,6 +137,8 @@ public:
     map<string, ofxAVFVideoPlayer*> idToAVFPlayers;
     map<string, uint> vidStartTimes;
     map< ofxThreadedVideoPlayer*, float> playerToVolume; //the players can't set the volume til they're loaded
+    
+    string lastPlayID;
     
     vector< CommandPath*> jsonArduinoCommands;
     ofxJSONElement configJson;

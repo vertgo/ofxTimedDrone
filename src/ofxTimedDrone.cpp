@@ -10,7 +10,7 @@ void ofxTimedDrone::setup(){
     hasTag = false;
     curTag = "";
     //some default settings in case it doesn't work
-    serverIP = "10.0.1.7";
+    serverIP = "10.0.1.21";
     port = 1337;
     reconnectTime = 4000;
     
@@ -35,8 +35,12 @@ void ofxTimedDrone::setup(){
     
     //are we connected to the server - if this fails we
 	//will check every few seconds to see if the server exists
-	weConnected = tcpClient.setup(serverIP, port);
     lastConnectTime = ofGetElapsedTimeMillis();
+    weConnected = tcpClient.setup(serverIP, port);
+    if (!weConnected ){
+        globalErrorMessage += "cannot connect to host\n";
+    }
+
 	//optionally set the delimiter to something else.  The delimter in the client and the server have to be the same
 	//tcpClient.setMessageDelimiter("\n");
     cout <<"setup::2\n";
@@ -405,6 +409,7 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 break;
             case THREADED_AVF:
                 idToThreadedPlayers[ inEvent->vidID]->play();
+                lastPlayID = inEvent->vidID;
                 break;
             
         }
@@ -515,6 +520,9 @@ void ofxTimedDrone::update(){
         if( deltaTime > reconnectTime ){
             weConnected = tcpClient.setup( serverIP, port);
             lastConnectTime = ofGetElapsedTimeMillis();
+            if ( !weConnected ){
+                globalErrorMessage += "failed reconnection\n";
+            }
         }
     }
     
@@ -641,6 +649,16 @@ void ofxTimedDrone::draw(){
         ofSetColor(0, 0, 0);
         ofDrawBitmapString(globalErrorMessage, 30, 30);
         
+        int errorLength = globalErrorMessage.length();
+        if (errorLength != lastErrorLength ){
+            lastErrorTime = ofGetElapsedTimeMillis();
+            lastErrorLength = errorLength;
+        }
+
+        if ( ofGetElapsedTimeMillis() -lastErrorTime > 3000 ){
+            lastErrorLength = 0;
+            globalErrorMessage = "";
+        }
     }
     
 
@@ -703,13 +721,15 @@ void ofxTimedDrone::updateDroneVids(){
             for (iterThreaded = idToThreadedPlayers.begin(); iterThreaded != idToThreadedPlayers.end(); ++iterThreaded) {
                 
                 string id = iterThreaded->first;
-                ofxThreadedVideoPlayer* curAVFPlayer = iterThreaded->second;
+                
+                
+                ofxThreadedVideoPlayer* curTAVFPlayer = iterThreaded->second;
                 
                 long long playHead = now - goTime - vidStartTimes[id];
 
-                if ( curAVFPlayer->isPlaying() ){
-                    curAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
-                    curAVFPlayer->update();
+                if ( true|| curTAVFPlayer->isPlaying() ){
+                    curTAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
+                    curTAVFPlayer->update();
                 }
             }
         
@@ -808,6 +828,7 @@ void ofxTimedDrone::testGoNow(){
 void ofxTimedDrone::keyPressed(int key){
     switch (key) {
         case 'g':
+            
             testGo();
             break;
         
