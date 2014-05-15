@@ -142,15 +142,36 @@ void SyncSequence::parseVidNode(ofxJSONElement inNode){
         cout << " and stops at " << ((float)stopEvent->fireTime)/1000.f;
     }
     
+    if ( !inNode[ "closeTime" ].isNull() ){
+        FireEvent* closeEvent = new FireEvent( "close" );
+        closeEvent->fireTime = inNode["closeTime"].asFloat() * 1000;
+        
+        
+        droneEventList.push_back(closeEvent);
+        cout << " and closes at " << ((float)closeEvent->fireTime)/1000.f;
+    }
+    
+    if ( !inNode[ "customTime" ].isNull() ){
+        FireEvent* customEvent = new FireEvent( "custom" );
+        customEvent->fireTime = inNode["customTime"].asFloat() * 1000;
+        
+        
+        droneEventList.push_back(customEvent);
+        cout << " and does something custom at " << ((float)customEvent->fireTime)/1000.f;
+    }
+    
     cout << endl;
     
 }
 
 //--------------------------------------------------------------
-void SyncSequence::cycle( string inTag ){
+vector<string>* SyncSequence::cycle( string inTag ){
+    vector<string>* returnIDs = new vector<string>();
     for ( int i = 0; i < droneEventList.size(); i++ ){
         if ( droneEventList[ i ]->type == "vidFire" ){
             droneEventList[ i ] ->cycle( inTag );
+            returnIDs->push_back(droneEventList[ i ]->vidID);
         }
     }
+    return returnIDs;
 }

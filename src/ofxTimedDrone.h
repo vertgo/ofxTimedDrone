@@ -9,6 +9,8 @@
 #include "ofxThreadedVideoPlayer.h"
 #include "SyncedOFVideoPlayer.h"
 #include "SyncSequence.h"
+#include "ofxScene.h"
+#include "ofxRectangleObject.h"
 
 struct CommandPath{
     string name;
@@ -34,7 +36,8 @@ public:
     void windowResized(int w, int h);
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
-    void go();
+    
+    virtual void go();
     
 
     
@@ -53,7 +56,8 @@ public:
     string curTag;
     string tagpath;
     bool    hasTag;
-    
+    bool    hasClose;
+    bool    maintainSync;
     
     //drone stuff
     unsigned long long goTime;      //specifies the time to "go" when the sequence of events across all drones begins,
@@ -100,8 +104,10 @@ public:
     
     //TODO: maybe put in a reset function when it hits here? Unless a general reset is specified?
     
-    
-    
+    void initScene();
+    ofxScene* scene;
+    ofxRectangleObject *topCard;
+    ofxRectangleObject *bottomCard;
     
     
     void parseJsonFromBackend( ofxJSONElement inNode );  //when the new json comes in, besides just go time,
@@ -148,6 +154,10 @@ public:
     ofxJSONElement result;
     ofxTCPClient tcpClient;
     string msgTx, msgRx;
+    void closeCards();
+    void hideCards();
+    
+    virtual void fireCustom(){};
     
     bool weConnected;
     PlayerType playerType;

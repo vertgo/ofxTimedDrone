@@ -11,6 +11,8 @@ void ofxTimedDrone::setup(){
     playerType = THREADED_AVF;//default to threaded AVF (currently threaded avf is buggy, qtkit is good but slow)
     
     ofHideCursor();
+    maintainSync = false;
+    
     
     ofxTimedDrone::globalHasTag = hasTag = false;
     curTag = "";
@@ -24,7 +26,7 @@ void ofxTimedDrone::setup(){
     targetVolume = ambientVolume = 0.25f;
     turntUp = 0.75f;
     
-    
+    hasClose = false;
     loadDroneConfig();
     ofSetVerticalSync(true);
     ofSetFrameRate(30);
@@ -55,6 +57,28 @@ void ofxTimedDrone::setup(){
     cout <<"setup::3\n";
     ofSetFullscreen(true);
     
+    initScene();
+}
+//
+void ofxTimedDrone::initScene(){
+    scene = new ofxScene(ofGetWidth(), ofGetHeight());
+    scene->setClearBackground(false);
+    scene->setRenderMode(RENDER_NORMAL);
+    topCard = new ofxRectangleObject( ofGetWidth(), ofGetHeight()/2);
+    //topCard->setColor( 0,255,0);
+    topCard->setTrans( -ofGetWidth()/2, 0, 0 );
+    
+    
+    
+    bottomCard = new ofxRectangleObject( ofGetWidth(), ofGetHeight()/2);
+    bottomCard->setRot( 0, 0, 180);
+    bottomCard->setTrans( ofGetWidth()/2, 0, 0 );
+    //bottomCard->setColor(255,0,0);
+    scene->getRoot()->addChild(topCard);
+    scene->getRoot()->addChild(bottomCard);
+    
+    //topCard->hide();
+    //bottomCard->hide();
 }
 
 //used for sorting events
@@ -134,6 +158,14 @@ void ofxTimedDrone::parseSettings(ofxJSONElement inNode){
         tagpath = inNode[ "tagpath" ].asString();
         ofxTimedDrone::globalHasTag = hasTag = tagpath.length() > 0;
         cout << "ofxTimedDrone::parseSettings:hasTag::" << hasTag<<", path:" << tagpath <<endl;
+    }
+    
+    if ( inNode[ "hasClose"].type() != Json::nullValue ){
+        hasClose = inNode[ "hasClose" ].asBool();
+    }
+    
+    if ( !inNode[ "sync"].isNull() ){
+        maintainSync = inNode[ "sync" ].asBool();
     }
     
 }
@@ -350,6 +382,7 @@ void ofxTimedDrone::droneCheckForGo(){
         
         //cout << "!timeWent::now:\n" <<now << "\n"<< goTime <<endl;
         if ( now >= goTime ){
+            resetCurSequence();
             go(); //do something I suppose
             cout << "NOW!!\n";
         }
@@ -374,7 +407,7 @@ void ofxTimedDrone::droneCheckForGo(){
         updateDroneVids();
         
     }
-    
+    scene->update(ofGetElapsedTimef());
     
 }
 
@@ -459,12 +492,18 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
                 break;
                 
             case THREADED_AVF:
-                getPlayerForID( lastPlayID)->setPosition(0);
+                //getPlayerForID( lastPlayID)->setPosition(0);
                 getPlayerForID( lastPlayID)->setPaused(true);
                 
                 break;
                 
         }
+    }
+    else if ( inEvent->type == "close" ){
+        closeCards();
+    }
+    else if ( inEvent->type == "custom" ){
+        fireCustom();
     }
     else if ( inEvent->type == "soundFire" ){
         cout<< "soundFire, setting volume to:" << turntUp<<endl;
@@ -477,8 +516,36 @@ void ofxTimedDrone::goFireEvent( FireEvent* inEvent ){
         //soundPlayer.setVolume(ambientVolume);
         targetVolume = ambientVolume;
     }
+    else{
+        cout << "unknown event type:" << inEvent->type;
+    }
 }
-//
+//----------------------------------------------------
+void ofxTimedDrone::closeCards(){
+    topCard->show();
+    bottomCard->show();
+    topCard->doMessage3f(OF_TRANSLATE, 0.f, .3f, &PennerEasing::expoEaseOut, -ofGetWidth()/2, 0,0);
+
+    bottomCard->doMessage3f(OF_TRANSLATE, 0.f, .3f, &PennerEasing::expoEaseOut, ofGetWidth()/2, 0,0);
+    
+    
+}
+
+
+//----------------------------------------------------
+void ofxTimedDrone::hideCards(){
+    topCard->hide();
+    bottomCard->hide();
+    topCard->setTrans( -ofGetWidth()/2, ofGetHeight()/2, 0 );
+    bottomCard->setTrans( ofGetWidth()/2, -ofGetHeight()/2, 0 );
+    
+    //topCard->doMessage3f(OF_TRANSLATE, 0.f, .3f, &PennerEasing::expoEaseOut, -ofGetWidth()/2, 0,0);
+    //bottomCard->doMessage3f(OF_TRANSLATE, 0.f, .3f, &PennerEasing::expoEaseOut, -ofGetWidth()/2, -ofGetHeight()/2 ,0);
+    
+    
+    
+}
+//----------------------------------------------------
 ofxThreadedVideoPlayer* ofxTimedDrone::getPlayerForID( string inID){
     if ( idToThreadedPlayers.count(inID) >0 ){
         return( idToThreadedPlayers[ inID ]);
@@ -511,11 +578,21 @@ void ofxTimedDrone::update(){
                     if ( result["goTime"].type() != Json::nullValue ){
                         cout << "update::parsing goTime\n";
                         //{"goTime":1398718870436,"eventType":"sports"}[/TCP]
+                        
+                        //TODO MUST DO remove the 5000
                         unsigned long long newGoTime = (unsigned long long)result[ "goTime"].asInt64();//.asUInt();
                         
-                        if ( hasTag && result[ tagpath ].type() == Json::stringValue ){
-                            curTag = result[ tagpath ].asString();
-                            cout << "update::parsing::curTag:" << curTag <<endl;
+                        if ( hasTag ){
+                            
+                            if( result[ tagpath ].type() == Json::stringValue ){
+                                curTag = result[ tagpath ].asString();
+                                cout << "update::parsing::curTag:" << curTag <<endl;
+                            }
+                            else if( result[ tagpath ].type() == Json::intValue || result[ tagpath ].type() == Json::realValue ){
+                                curTag = ofToString( result[ tagpath ].asInt() );
+                                cout << "update::parsing::curTag:" << curTag <<endl;
+                            }
+
                         }
                         else{
                             curTag = "";
@@ -532,7 +609,12 @@ void ofxTimedDrone::update(){
                             resetCurSequence();
                             
                             curSequence = defaultSequence;
-                            curSequence->cycle( curTag );
+                            vector<string>* resetIDs = curSequence->cycle( curTag );
+                            for ( int j = 0; j < resetIDs->size(); j++ ){
+                                getPlayerForID( resetIDs->at(j) )->setPosition( 0 );
+                            }
+                            delete resetIDs;//the only delete i have :(
+                            
                         }
                         goTime = newGoTime;
                         timeWent = false;
@@ -630,9 +712,10 @@ void ofxTimedDrone::parseJsonFromBackend(ofxJSONElement inNode){
 
 //--------------------------------------------------------------
 void ofxTimedDrone::go(){
-
+    hideCards();
     curEventIndex = 0;
     timeWent = true;
+    
 }
 
 //--------------------------------------------------------------
@@ -648,7 +731,7 @@ void ofxTimedDrone::resetCurSequence(){
                 string id = iter->first;
                 SyncedOFVideoPlayer* curPlayer = iter->second;
                 
-                curPlayer->setPosition(0);
+                //curPlayer->setPosition(0);
                 curPlayer->setPaused(true);
 
             }
@@ -690,6 +773,9 @@ void ofxTimedDrone::resetCurSequence(){
 
 //--------------------------------------------------------------
 void ofxTimedDrone::draw(){
+    
+    glHint(GL_POLYGON_SMOOTH_HINT,GL_DONT_CARE);
+    
     if (globalErrorMessage.length() > 0){
         ofSetColor(0, 0, 0);
         ofDrawBitmapString(globalErrorMessage, 30, 30);
@@ -709,7 +795,7 @@ void ofxTimedDrone::draw(){
 
     ofSetColor(255, 255, 255 );
     drawDroneVids();
-    
+    scene->draw();
 }
 
 //--------------------------------------------------------------
@@ -782,7 +868,9 @@ void ofxTimedDrone::updateDroneVids(){
             ofxThreadedVideoPlayer* curTAVFPlayer = getPlayerForID( lastPlayID );
             long long playHead = now - goTime - vidStartTimes[lastPlayID];
             if ( curTAVFPlayer->isPlaying() ){
-                curTAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
+                if ( maintainSync ){
+                    curTAVFPlayer->syncToPlayhead( ((float)playHead )/1000.f);
+                }
                 curTAVFPlayer->update();
             }
         
